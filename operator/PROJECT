@@ -7,4 +7,14 @@ layout:
 - go.kubebuilder.io/v4
 projectName: operator
 repo: openfga-controller
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: openfga-controller
+  group: extensions
+  kind: Store
+  path: openfga-controller/api/v1
+  version: v1
 version: "3"
