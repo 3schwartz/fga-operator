@@ -1,0 +1,9 @@
+apiVersion: extensions.openfga-controller/v1
+kind: AuthorizationModelRequest
+metadata:
+  labels:
+    app.kubernetes.io/name: operator
+    app.kubernetes.io/managed-by: kustomize
+  name: authorizationmodelrequest-sample
+spec:
+  # TODO(user): Add fields here
