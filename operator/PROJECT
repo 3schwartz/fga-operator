@@ -17,4 +17,20 @@ resources:
   kind: AuthorizationModelRequest
   path: openfga-controller/api/v1
   version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: openfga-controller
+  group: extensions
+  kind: AuthorizationModel
+  path: openfga-controller/api/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: openfga-controller
+  group: extensions
+  kind: Store
+  path: openfga-controller/api/v1
+  version: v1
 version: "3"

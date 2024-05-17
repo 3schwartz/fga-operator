@@ -14,6 +14,10 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the Project itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
+- store_editor_role.yaml
+- store_viewer_role.yaml
+- authorizationmodel_editor_role.yaml
+- authorizationmodel_viewer_role.yaml
 - authorizationmodelrequest_editor_role.yaml
 - authorizationmodelrequest_viewer_role.yaml
 
