@@ -19,6 +19,7 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"openfga-controller/internal/openfga"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -121,10 +122,16 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
+	config, err := openfga.NewConfig()
+	if err != nil {
+		setupLog.Error(err, "unable to create config")
+		os.Exit(1)
+	}
 
 	if err = (&controller.AuthorizationModelRequestReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Config: config,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AuthorizationModelRequest")
 		os.Exit(1)

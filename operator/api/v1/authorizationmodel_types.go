@@ -20,22 +20,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // AuthorizationModelSpec defines the desired state of AuthorizationModel
 type AuthorizationModelSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of AuthorizationModel. Edit authorizationmodel_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Instance AuthorizationModelInstance `json:"instance,omitempty"`
 }
 
 // AuthorizationModelStatus defines the observed state of AuthorizationModel
 type AuthorizationModelStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	LatestModels []AuthorizationModelInstance `json:"latestModels,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -61,4 +60,9 @@ type AuthorizationModelList struct {
 
 func init() {
 	SchemeBuilder.Register(&AuthorizationModel{}, &AuthorizationModelList{})
+}
+
+type AuthorizationModelInstance struct {
+	Id        string       `json:"id,omitempty"`
+	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
 }

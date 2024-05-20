@@ -28,14 +28,16 @@ type StoreSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Store. Edit store_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Identification which is given by OpenFGA when the Store is created
+	Id string `json:"id,omitempty"`
 }
 
 // StoreStatus defines the observed state of Store
 type StoreStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
 }
 
 //+kubebuilder:object:root=true

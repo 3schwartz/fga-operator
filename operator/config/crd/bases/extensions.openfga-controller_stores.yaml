@@ -39,13 +39,17 @@ spec:
           spec:
             description: StoreSpec defines the desired state of Store
             properties:
-              foo:
-                description: Foo is an example field of Store. Edit store_types.go
-                  to remove/update
+              id:
+                description: Identification which is given by OpenFGA when the Store
+                  is created
                 type: string
             type: object
           status:
             description: StoreStatus defines the observed state of Store
+            properties:
+              createdAt:
+                format: date-time
+                type: string
             type: object
         type: object
     served: true

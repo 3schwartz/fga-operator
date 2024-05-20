@@ -41,9 +41,7 @@ spec:
             description: AuthorizationModelRequestSpec defines the desired state of
               AuthorizationModelRequest
             properties:
-              foo:
-                description: Foo is an example field of AuthorizationModelRequest.
-                  Edit authorizationmodelrequest_types.go to remove/update
+              authorizationModel:
                 type: string
             type: object
           status:
