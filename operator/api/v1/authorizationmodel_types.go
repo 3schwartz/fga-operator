@@ -26,7 +26,9 @@ import (
 type AuthorizationModelSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Instance AuthorizationModelInstance `json:"instance,omitempty"`
+	Instance           AuthorizationModelInstance   `json:"instance,omitempty"`
+	AuthorizationModel string                       `json:"authorizationModel,omitempty"`
+	LatestModels       []AuthorizationModelInstance `json:"latestModels,omitempty"`
 }
 
 // AuthorizationModelStatus defines the observed state of AuthorizationModel
@@ -34,7 +36,6 @@ type AuthorizationModelStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	LatestModels []AuthorizationModelInstance `json:"latestModels,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -63,6 +64,21 @@ func init() {
 }
 
 type AuthorizationModelInstance struct {
-	Id        string       `json:"id,omitempty"`
-	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
+	Id            string       `json:"id,omitempty"`
+	SchemaVersion string       `json:"schemaVersion,omitempty"`
+	CreatedAt     *metav1.Time `json:"createdAt,omitempty"`
+}
+
+func (a *AuthorizationModelInstance) DeepCopy() AuthorizationModelInstance {
+	copied := AuthorizationModelInstance{
+		Id:            a.Id,
+		SchemaVersion: a.SchemaVersion,
+	}
+
+	if a.CreatedAt != nil {
+		copiedTime := *a.CreatedAt
+		copied.CreatedAt = &copiedTime
+	}
+
+	return copied
 }
