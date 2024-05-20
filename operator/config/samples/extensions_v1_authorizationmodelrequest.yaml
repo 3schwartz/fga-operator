@@ -4,6 +4,16 @@ metadata:
   labels:
     app.kubernetes.io/name: operator
     app.kubernetes.io/managed-by: kustomize
-  name: authorizationmodelrequest-sample
+  name: documents
 spec:
-  # TODO(user): Add fields here
+  authorizationModel: |
+    model
+      schema 1.1
+      
+    type user
+      
+    type document
+      relations
+        define reader: [user]
+        define writer: [user]
+        define owner: [user]

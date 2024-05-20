@@ -1,6 +1,6 @@
 ## Append samples of your project ##
 resources:
 - extensions_v1_authorizationmodelrequest.yaml
-- extensions_v1_authorizationmodel.yaml
-- extensions_v1_store.yaml
+#- extensions_v1_authorizationmodel.yaml
+#- extensions_v1_store.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

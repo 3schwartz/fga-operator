@@ -67,14 +67,19 @@ func (_ realClock) Now() time.Time { return time.Now() }
 func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	store := &extensionsv1.Store{}
+	authorizationRequest := &extensionsv1.AuthorizationModelRequest{}
+	if err := r.Get(ctx, req.NamespacedName, authorizationRequest); err != nil {
+		log.Error(err, "unable to fetch authorization model request", "authorizationModelRequestName", req.Name)
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 
+	store := &extensionsv1.Store{}
 	err := r.Get(ctx, req.NamespacedName, store)
 	switch {
 	case client.IgnoreNotFound(err) != nil:
 		return ctrl.Result{}, err
 	case errors.IsNotFound(err):
-		store, err = r.createStore(ctx, req, &log)
+		store, err = r.createStore(ctx, req, authorizationRequest, &log)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -83,7 +88,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	return ctrl.Result{}, nil
 }
 
-func (r *AuthorizationModelRequestReconciler) createStore(ctx context.Context, req ctrl.Request, log *logr.Logger) (*extensionsv1.Store, error) {
+func (r *AuthorizationModelRequestReconciler) createStore(ctx context.Context, req ctrl.Request, authorizationModelRequest *extensionsv1.AuthorizationModelRequest, log *logr.Logger) (*extensionsv1.Store, error) {
 	currentFgaClient, err := fgaClient.NewSdkClient(&fgaClient.ClientConfiguration{
 		ApiUrl: r.Config.ApiUrl,
 		Credentials: &credentials.Credentials{
@@ -102,8 +107,16 @@ func (r *AuthorizationModelRequestReconciler) createStore(ctx context.Context, r
 	if err != nil {
 		return nil, err
 	}
+	log.V(0).Info("create store in OpenFGA", "storeOpenFGA", store)
 
 	storeResource := &extensionsv1.Store{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      req.Name,
+			Namespace: req.Namespace,
+			Labels: map[string]string{
+				"authorization-model": req.Name,
+			},
+		},
 		Spec: extensionsv1.StoreSpec{
 			Id: store.Id,
 		},
@@ -111,10 +124,14 @@ func (r *AuthorizationModelRequestReconciler) createStore(ctx context.Context, r
 			CreatedAt: &metav1.Time{Time: r.Now()},
 		},
 	}
+	if err := ctrl.SetControllerReference(authorizationModelRequest, storeResource, r.Scheme); err != nil {
+		return nil, err
+	}
 	if err := r.Create(ctx, storeResource); client.IgnoreAlreadyExists(err) != nil {
 		log.Error(err, fmt.Sprintf("Failed to create store %s", req.Name))
 		return nil, err
 	}
+	log.V(0).Info("Created store in Kubernetes", "storeKubernetes", storeResource)
 
 	return storeResource, nil
 }
