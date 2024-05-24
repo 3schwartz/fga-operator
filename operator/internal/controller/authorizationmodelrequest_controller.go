@@ -130,40 +130,79 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	return requeueResult, nil
 }
 
+type EnvValueFromDeployment func(deployment *appsV1.Deployment) string
+
+func envVarValueForStore(store *extensionsv1.Store) EnvValueFromDeployment {
+	return func(deployment *appsV1.Deployment) string {
+		return store.Spec.Id
+	}
+}
+
+func (r *AuthorizationModelRequestReconciler) updateAuthorizationModelIdOnDeployment(
+	ctx context.Context,
+	deployments appsV1.DeploymentList,
+	authorizationModel *extensionsv1.AuthorizationModel,
+	log *logr.Logger,
+) error {
+
+	// TODO find correct authorization model to use
+
+	return nil
+}
+
 func (r *AuthorizationModelRequestReconciler) updateStoreIdOnDeployments(
 	ctx context.Context,
 	deployments appsV1.DeploymentList,
 	store *extensionsv1.Store,
 	log *logr.Logger) error {
+	deploymentsForUpdate, err := getDeploymentEnvVarUpdate(deployments, "OPENFGA_STORE_ID", envVarValueForStore(store))
+	if err != nil {
+		return err
+	}
+	return r.updateDeployments(ctx, deploymentsForUpdate, "openfga_store_id_updated_at", log)
+}
 
+func getDeploymentEnvVarUpdate(deployments appsV1.DeploymentList, envVarName string, envVarValueGetter EnvValueFromDeployment) ([]appsV1.Deployment, error) {
+	var updates []appsV1.Deployment
 	for _, deployment := range deployments.Items {
+		envVarValue := envVarValueGetter(&deployment)
 		updated := false
 		for i := range deployment.Spec.Template.Spec.Containers {
 			container := &deployment.Spec.Template.Spec.Containers[i]
 			hasEnv := false
 			for j := range container.Env {
 				env := &container.Env[j]
-				if env.Name != "OPENFGA_STORE_ID" {
+				if env.Name != envVarName {
 					continue
 				}
 				hasEnv = true
-				if env.Value != store.Spec.Id {
+				if env.Value != envVarValue {
 					updated = true
-					env.Value = store.Spec.Id
+					env.Value = envVarValue
 				}
 				break
 			}
 			if hasEnv {
 				continue
 			}
-			container.Env = append(container.Env, corev1.EnvVar{Name: "OPENFGA_STORE_ID", Value: store.Spec.Id})
+			container.Env = append(container.Env, corev1.EnvVar{Name: envVarName, Value: envVarValue})
 			updated = true
 		}
-		if !updated {
-			continue
+		if updated {
+			updates = append(updates, deployment)
 		}
+	}
+	return updates, nil
+}
 
-		deployment.Annotations["openfga_store_id_updated_at"] = r.Now().UTC().Format(time.RFC3339)
+func (r *AuthorizationModelRequestReconciler) updateDeployments(
+	ctx context.Context,
+	deployments []appsV1.Deployment,
+	updatedAtAnnotationKey string,
+	log *logr.Logger,
+) error {
+	for _, deployment := range deployments {
+		deployment.Annotations[updatedAtAnnotationKey] = r.Now().UTC().Format(time.RFC3339)
 
 		if err := r.Update(ctx, &deployment); err != nil {
 			log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
