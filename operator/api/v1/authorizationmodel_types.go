@@ -93,26 +93,17 @@ func FilterBySchemaVersion(instances []AuthorizationModelInstance, version strin
 }
 
 func (a *AuthorizationModel) getVersion(deployment v1.Deployment) (AuthorizationModelInstance, error) {
-	// TODO: if a tag is present lookup the version
 	version, ok := deployment.Labels["openfga-auth-model-version"]
 	if ok {
-		if a.Spec.Instance.SchemaVersion == version {
-			return a.Spec.Instance, nil
-		}
-		if len(a.Spec.LatestModels) == 0 {
-			return AuthorizationModelInstance{}, fmt.Errorf("current version didn't version %s and no latest models were defined", version)
-		}
-		filtered := FilterBySchemaVersion(a.Spec.LatestModels, version)
+		instances := append(a.Spec.LatestModels, a.Spec.Instance)
+		filtered := FilterBySchemaVersion(instances, version)
 		if len(filtered) == 0 {
 			return AuthorizationModelInstance{}, fmt.Errorf("neither current or any latest models match version %s", version)
 		}
 		SortAuthorizationModelInstancesByCreatedAtDesc(filtered)
 		return filtered[0], nil
 	}
-
-	// TODO: if a tag isn't present then use latest
-
-	// TODO: annotations: updated at, schema version
+	return a.Spec.Instance, nil
 }
 
 func (a *AuthorizationModelInstance) DeepCopy() AuthorizationModelInstance {

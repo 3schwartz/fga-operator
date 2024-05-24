@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,17 +67,18 @@ func TestSortAuthorizationModelInstancesByCreatedAtDesc(t *testing.T) {
 	}
 }
 
-func TestFoo(t *testing.T) {
+func TestWhenNoVersionIsPresentThenAddReturnLatest(t *testing.T) {
 	// Arrange
-	time := &metav1.Time{Time: time.Now()}
+	currentTime := &metav1.Time{Time: time.Now()}
+	instance := AuthorizationModelInstance{
+		Id:            uuid.NewString(),
+		SchemaVersion: "1.2",
+		CreatedAt:     currentTime,
+	}
 	authModel := AuthorizationModel{
 		Status: AuthorizationModelStatus{},
 		Spec: AuthorizationModelSpec{
-			Instance: AuthorizationModelInstance{
-				Id:            "asd",
-				SchemaVersion: "1.2",
-				CreatedAt:     time,
-			},
+			Instance:           instance,
 			AuthorizationModel: "AuthorizationModel",
 			LatestModels:       make([]AuthorizationModelInstance, 0),
 		},
@@ -84,9 +86,15 @@ func TestFoo(t *testing.T) {
 	deployment := createDeployment("name", "namespace")
 
 	// Act
+	version, err := authModel.getVersion(*deployment)
 
 	// Assert
-
+	if err != nil {
+		t.Fatalf("Error getting version: %v", err)
+	}
+	if version.Id != instance.Id {
+		t.Errorf("Unexpected version. Expected %v, got %v", instance.Id, version.Id)
+	}
 }
 
 func createDeployment(name, namespace string) *appsv1.Deployment {

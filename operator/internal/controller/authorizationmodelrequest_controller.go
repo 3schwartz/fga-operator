@@ -147,6 +147,7 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModelIdOnDeploy
 
 	// TODO find correct authorization model to use
 
+	// TODO: annotations: updated at, schema version
 	return nil
 }
 
