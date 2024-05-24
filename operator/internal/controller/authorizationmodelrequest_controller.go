@@ -23,6 +23,8 @@ import (
 	fgaClient "github.com/openfga/go-sdk/client"
 	"github.com/openfga/go-sdk/credentials"
 	"github.com/openfga/language/pkg/go/transformer"
+	appsV1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -113,11 +115,63 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		return requeueResult, err
 	}
 
-	// Update all pods with store
+	var deployments appsV1.DeploymentList
+	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingLabels{"foo": "bar"}); err != nil {
+		log.Error(err, "unable to list deployments")
+		return requeueResult, err
+	}
+	if err := r.updateStoreIdOnDeployments(ctx, deployments, store, &log); err != nil {
+		log.Error(err, "unable to update store id on deployments")
+		return requeueResult, err
+	}
 
 	// Update all pods with authorization model
 
-	return ctrl.Result{}, nil
+	return requeueResult, nil
+}
+
+func (r *AuthorizationModelRequestReconciler) updateStoreIdOnDeployments(
+	ctx context.Context,
+	deployments appsV1.DeploymentList,
+	store *extensionsv1.Store,
+	log *logr.Logger) error {
+
+	for _, deployment := range deployments.Items {
+		updated := false
+		for i := range deployment.Spec.Template.Spec.Containers {
+			container := &deployment.Spec.Template.Spec.Containers[i]
+			hasEnv := false
+			for j := range container.Env {
+				env := &container.Env[j]
+				if env.Name != "OPENFGA_STORE_ID" {
+					continue
+				}
+				hasEnv = true
+				if env.Value != store.Spec.Id {
+					updated = true
+					env.Value = store.Spec.Id
+				}
+				break
+			}
+			if hasEnv {
+				continue
+			}
+			container.Env = append(container.Env, corev1.EnvVar{Name: "OPENFGA_STORE_ID", Value: store.Spec.Id})
+			updated = true
+		}
+		if !updated {
+			continue
+		}
+
+		deployment.Annotations["openfga_store_id_updated_at"] = r.Now().UTC().Format(time.RFC3339)
+
+		if err := r.Update(ctx, &deployment); err != nil {
+			log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
+			return err
+		}
+		log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
+	}
+	return nil
 }
 
 func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
@@ -152,6 +206,7 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 		CreatedAt:     &metav1.Time{Time: r.Now()},
 	}
 	if err = r.Update(ctx, authorizationModel); err != nil {
+		log.Error(err, "unable to update authorization model in Kubernetes", "authorizationModel", authorizationModel)
 		return err
 	}
 
