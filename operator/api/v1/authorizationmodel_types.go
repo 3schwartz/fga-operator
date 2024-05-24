@@ -17,7 +17,10 @@ limitations under the License.
 package v1
 
 import (
+	"fmt"
+	v1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sort"
 )
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
@@ -67,6 +70,49 @@ type AuthorizationModelInstance struct {
 	Id            string       `json:"id,omitempty"`
 	SchemaVersion string       `json:"schemaVersion,omitempty"`
 	CreatedAt     *metav1.Time `json:"createdAt,omitempty"`
+}
+
+type ByCreatedAtDesc []AuthorizationModelInstance
+
+func (a ByCreatedAtDesc) Len() int           { return len(a) }
+func (a ByCreatedAtDesc) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByCreatedAtDesc) Less(i, j int) bool { return a[i].CreatedAt.After(a[j].CreatedAt.Time) }
+
+func SortAuthorizationModelInstancesByCreatedAtDesc(instances []AuthorizationModelInstance) {
+	sort.Sort(ByCreatedAtDesc(instances))
+}
+
+func FilterBySchemaVersion(instances []AuthorizationModelInstance, version string) []AuthorizationModelInstance {
+	var filtered []AuthorizationModelInstance
+	for _, instance := range instances {
+		if instance.SchemaVersion == version {
+			filtered = append(filtered, instance)
+		}
+	}
+	return filtered
+}
+
+func (a *AuthorizationModel) getVersion(deployment v1.Deployment) (AuthorizationModelInstance, error) {
+	// TODO: if a tag is present lookup the version
+	version, ok := deployment.Labels["openfga-auth-model-version"]
+	if ok {
+		if a.Spec.Instance.SchemaVersion == version {
+			return a.Spec.Instance, nil
+		}
+		if len(a.Spec.LatestModels) == 0 {
+			return AuthorizationModelInstance{}, fmt.Errorf("current version didn't version %s and no latest models were defined", version)
+		}
+		filtered := FilterBySchemaVersion(a.Spec.LatestModels, version)
+		if len(filtered) == 0 {
+			return AuthorizationModelInstance{}, fmt.Errorf("neither current or any latest models match version %s", version)
+		}
+		SortAuthorizationModelInstancesByCreatedAtDesc(filtered)
+		return filtered[0], nil
+	}
+
+	// TODO: if a tag isn't present then use latest
+
+	// TODO: annotations: updated at, schema version
 }
 
 func (a *AuthorizationModelInstance) DeepCopy() AuthorizationModelInstance {

@@ -116,7 +116,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	}
 
 	var deployments appsV1.DeploymentList
-	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingLabels{"foo": "bar"}); err != nil {
+	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingLabels{"openfga-store": store.Name}); err != nil {
 		log.Error(err, "unable to list deployments")
 		return requeueResult, err
 	}
@@ -159,7 +159,7 @@ func (r *AuthorizationModelRequestReconciler) updateStoreIdOnDeployments(
 	if err != nil {
 		return err
 	}
-	return r.updateDeployments(ctx, deploymentsForUpdate, "openfga_store_id_updated_at", log)
+	return r.updateDeployments(ctx, deploymentsForUpdate, "openfga-store-id-updated-at", log)
 }
 
 func getDeploymentEnvVarUpdate(deployments appsV1.DeploymentList, envVarName string, envVarValueGetter EnvValueFromDeployment) ([]appsV1.Deployment, error) {
