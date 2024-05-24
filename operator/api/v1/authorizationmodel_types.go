@@ -23,6 +23,8 @@ import (
 	"sort"
 )
 
+const OpenFgaAuthModelVersionLabel = "open-fga-auth-model-version"
+
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // AuthorizationModelSpec defines the desired state of AuthorizationModel
@@ -93,7 +95,7 @@ func FilterBySchemaVersion(instances []AuthorizationModelInstance, version strin
 }
 
 func (a *AuthorizationModel) getVersion(deployment v1.Deployment) (AuthorizationModelInstance, error) {
-	version, ok := deployment.Labels["openfga-auth-model-version"]
+	version, ok := deployment.Labels[OpenFgaAuthModelVersionLabel]
 	if ok {
 		instances := append(a.Spec.LatestModels, a.Spec.Instance)
 		filtered := FilterBySchemaVersion(instances, version)
