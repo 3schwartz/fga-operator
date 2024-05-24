@@ -101,7 +101,7 @@ func TestWhenNoVersionMatchThenReturnError(t *testing.T) {
 			},
 		},
 	}
-	deployment := createDeployment("name", "namespace")
+	deployment := createDeployment()
 	deployment.Labels[OpenFgaAuthModelVersionLabel] = version
 
 	// Act
@@ -113,198 +113,125 @@ func TestWhenNoVersionMatchThenReturnError(t *testing.T) {
 	}
 }
 
-func TestGivenCurrentAndLatestHasSameVersionsThenReturnCurrent(t *testing.T) {
-	// Arrange
+func TestAuthorizationModelGetVersionWithLatest(t *testing.T) {
 	currentTime := metaTime(time.Now())
 	version := "1.2"
 	id := uuid.NewString()
-	instance := AuthorizationModelInstance{
-		Id:            id,
-		SchemaVersion: version,
-		CreatedAt:     currentTime,
-	}
-	authModel := AuthorizationModel{
-		Status: AuthorizationModelStatus{},
-		Spec: AuthorizationModelSpec{
-			Instance:           instance,
-			AuthorizationModel: "AuthorizationModel",
-			LatestModels: []AuthorizationModelInstance{
-				{
-					Id:            uuid.NewString(),
-					SchemaVersion: version + "1",
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 7)),
-				},
-				{
-					Id:            uuid.NewString(),
-					SchemaVersion: version,
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 5)),
-				},
-				{
-					Id:            uuid.NewString(),
-					SchemaVersion: version,
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 6)),
-				},
-			},
+
+	tests := []struct {
+		name                 string
+		currentId            string
+		currentSchemaVersion string
+		firstLatestId        string
+		firstLatestVersion   string
+		secondLatestId       string
+		secondLatestVersion  string
+		thirdLatestId        string
+		thirdLatestVersion   string
+	}{
+		{
+			name:                 "Given current and latest has same versions then return current",
+			currentId:            id,
+			currentSchemaVersion: version,
+			firstLatestId:        uuid.NewString(),
+			firstLatestVersion:   uuid.NewString(),
+			secondLatestId:       uuid.NewString(),
+			secondLatestVersion:  version,
+			thirdLatestId:        uuid.NewString(),
+			thirdLatestVersion:   version,
+		},
+		{
+			name:                 "Given multiple with same version then return latest",
+			currentId:            uuid.NewString(),
+			currentSchemaVersion: uuid.NewString(),
+			firstLatestId:        uuid.NewString(),
+			firstLatestVersion:   version,
+			secondLatestId:       uuid.NewString(),
+			secondLatestVersion:  uuid.NewString(),
+			thirdLatestId:        id,
+			thirdLatestVersion:   version,
+		},
+		{
+			name:                 "Given latest instances when version is in latest then return from latest",
+			currentId:            uuid.NewString(),
+			currentSchemaVersion: uuid.NewString(),
+			firstLatestId:        uuid.NewString(),
+			firstLatestVersion:   uuid.NewString(),
+			secondLatestId:       id,
+			secondLatestVersion:  version,
+			thirdLatestId:        uuid.NewString(),
+			thirdLatestVersion:   uuid.NewString(),
+		},
+		{
+			name:                 "Given latest instances when version is same as current instance then return current instance",
+			currentId:            id,
+			currentSchemaVersion: version,
+			firstLatestId:        uuid.NewString(),
+			firstLatestVersion:   uuid.NewString(),
+			secondLatestId:       uuid.NewString(),
+			secondLatestVersion:  version,
+			thirdLatestId:        uuid.NewString(),
+			thirdLatestVersion:   uuid.NewString(),
+		},
+		{
+			name:                 "Given latest instances when version is same as current instance then return current instance",
+			currentId:            id,
+			currentSchemaVersion: version,
+			firstLatestId:        uuid.NewString(),
+			firstLatestVersion:   uuid.NewString(),
+			secondLatestId:       uuid.NewString(),
+			secondLatestVersion:  version,
+			thirdLatestId:        uuid.NewString(),
+			thirdLatestVersion:   uuid.NewString(),
 		},
 	}
-	deployment := createDeployment("name", "namespace")
-	deployment.Labels[OpenFgaAuthModelVersionLabel] = version
 
-	// Act
-	actualInstance, err := authModel.getVersion(*deployment)
-
-	// Assert
-	if err != nil {
-		t.Fatalf("Error getting version: %v", err)
-	}
-	if id != actualInstance.Id {
-		t.Errorf("Unexpected version. Expected %v, got %v", instance.Id, actualInstance.Id)
-	}
-}
-
-func TestGivenMultipleWithSameVersionThenReturnLatest(t *testing.T) {
-	// Arrange
-	currentTime := metaTime(time.Now())
-	version := "1.2"
-	id := uuid.NewString()
-	instance := AuthorizationModelInstance{
-		Id:            uuid.NewString(),
-		SchemaVersion: version + uuid.NewString(),
-		CreatedAt:     currentTime,
-	}
-	authModel := AuthorizationModel{
-		Status: AuthorizationModelStatus{},
-		Spec: AuthorizationModelSpec{
-			Instance:           instance,
-			AuthorizationModel: "AuthorizationModel",
-			LatestModels: []AuthorizationModelInstance{
-				{
-					Id:            uuid.NewString(),
-					SchemaVersion: version,
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 7)),
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			instance := AuthorizationModelInstance{
+				Id:            tt.currentId,
+				SchemaVersion: tt.currentSchemaVersion,
+				CreatedAt:     currentTime,
+			}
+			authModel := AuthorizationModel{
+				Status: AuthorizationModelStatus{},
+				Spec: AuthorizationModelSpec{
+					Instance:           instance,
+					AuthorizationModel: "AuthorizationModel",
+					LatestModels: []AuthorizationModelInstance{
+						{
+							Id:            tt.firstLatestId,
+							SchemaVersion: tt.firstLatestVersion,
+							CreatedAt:     metaTime(currentTime.Add(-time.Second * 7)),
+						},
+						{
+							Id:            tt.secondLatestId,
+							SchemaVersion: tt.secondLatestVersion,
+							CreatedAt:     metaTime(currentTime.Add(-time.Second * 5)),
+						},
+						{
+							Id:            tt.thirdLatestId,
+							SchemaVersion: tt.thirdLatestVersion,
+							CreatedAt:     metaTime(currentTime.Add(-time.Second * 6)),
+						},
+					},
 				},
-				{
-					Id:            uuid.NewString(),
-					SchemaVersion: version + uuid.NewString(),
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 5)),
-				},
-				{
-					Id:            id,
-					SchemaVersion: version,
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 6)),
-				},
-			},
-		},
-	}
-	deployment := createDeployment("name", "namespace")
-	deployment.Labels[OpenFgaAuthModelVersionLabel] = version
+			}
+			deployment := createDeployment()
+			deployment.Labels[OpenFgaAuthModelVersionLabel] = version
 
-	// Act
-	actualInstance, err := authModel.getVersion(*deployment)
+			// Act
+			actualInstance, err := authModel.getVersion(*deployment)
 
-	// Assert
-	if err != nil {
-		t.Fatalf("Error getting version: %v", err)
-	}
-	if id != actualInstance.Id {
-		t.Errorf("Unexpected version. Expected %v, got %v", instance.Id, actualInstance.Id)
-	}
-}
-
-func TestGivenLatestInstancesWhenVersionIsInLatestThenReturnFromLatest(t *testing.T) {
-	// Arrange
-	currentTime := metaTime(time.Now())
-	version := "1.2"
-	id := uuid.NewString()
-	instance := AuthorizationModelInstance{
-		Id:            uuid.NewString(),
-		SchemaVersion: version + "1",
-		CreatedAt:     currentTime,
-	}
-	authModel := AuthorizationModel{
-		Status: AuthorizationModelStatus{},
-		Spec: AuthorizationModelSpec{
-			Instance:           instance,
-			AuthorizationModel: "AuthorizationModel",
-			LatestModels: []AuthorizationModelInstance{
-				{
-					Id:            uuid.NewString(),
-					SchemaVersion: version + "1",
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 7)),
-				},
-				{
-					Id:            id,
-					SchemaVersion: version,
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 5)),
-				},
-				{
-					Id:            uuid.NewString(),
-					SchemaVersion: version + "3",
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 6)),
-				},
-			},
-		},
-	}
-	deployment := createDeployment("name", "namespace")
-	deployment.Labels[OpenFgaAuthModelVersionLabel] = version
-
-	// Act
-	actualInstance, err := authModel.getVersion(*deployment)
-
-	// Assert
-	if err != nil {
-		t.Fatalf("Error getting version: %v", err)
-	}
-	if id != actualInstance.Id {
-		t.Errorf("Unexpected version. Expected %v, got %v", instance.Id, actualInstance.Id)
-	}
-}
-
-func TestGivenLatestInstancesWhenVersionIsSameAsCurrentInstanceThenReturnCurrentInstance(t *testing.T) {
-	// Arrange
-	currentTime := metaTime(time.Now())
-	version := "1.2"
-	instance := AuthorizationModelInstance{
-		Id:            uuid.NewString(),
-		SchemaVersion: version,
-		CreatedAt:     currentTime,
-	}
-	authModel := AuthorizationModel{
-		Status: AuthorizationModelStatus{},
-		Spec: AuthorizationModelSpec{
-			Instance:           instance,
-			AuthorizationModel: "AuthorizationModel",
-			LatestModels: []AuthorizationModelInstance{
-				{
-					Id:            uuid.NewString(),
-					SchemaVersion: version + "1",
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 7)),
-				},
-				{
-					Id:            uuid.NewString(),
-					SchemaVersion: version + "2",
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 5)),
-				},
-				{
-					Id:            uuid.NewString(),
-					SchemaVersion: version + "3",
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 6)),
-				},
-			},
-		},
-	}
-	deployment := createDeployment("name", "namespace")
-	deployment.Labels[OpenFgaAuthModelVersionLabel] = version
-
-	// Act
-	actualInstance, err := authModel.getVersion(*deployment)
-
-	// Assert
-	if err != nil {
-		t.Fatalf("Error getting version: %v", err)
-	}
-	if instance.Id != actualInstance.Id {
-		t.Errorf("Unexpected version. Expected %v, got %v", instance.Id, actualInstance.Id)
+			// Assert
+			if err != nil {
+				t.Fatalf("Error getting version: %v", err)
+			}
+			if id != actualInstance.Id {
+				t.Errorf("Unexpected version. Expected %v, got %v", instance.Id, actualInstance.Id)
+			}
+		})
 	}
 }
 
@@ -324,7 +251,7 @@ func TestWhenVersionIsSameAsCurrentInstanceThenReturnCurrentInstance(t *testing.
 			AuthorizationModel: "AuthorizationModel",
 		},
 	}
-	deployment := createDeployment("name", "namespace")
+	deployment := createDeployment()
 	deployment.Labels[OpenFgaAuthModelVersionLabel] = version
 
 	// Act
@@ -355,7 +282,7 @@ func TestWhenNoVersionIsPresentThenAddReturnLatest(t *testing.T) {
 			LatestModels:       make([]AuthorizationModelInstance, 0),
 		},
 	}
-	deployment := createDeployment("name", "namespace")
+	deployment := createDeployment()
 
 	// Act
 	actualInstance, err := authModel.getVersion(*deployment)
@@ -373,7 +300,9 @@ func metaTime(t time.Time) *metav1.Time {
 	return &metav1.Time{Time: t}
 }
 
-func createDeployment(name, namespace string) *appsv1.Deployment {
+func createDeployment() *appsv1.Deployment {
+	name := "name"
+	namespace := "namespace"
 	objectMeta := metav1.ObjectMeta{
 		Name:      name,
 		Namespace: namespace,
