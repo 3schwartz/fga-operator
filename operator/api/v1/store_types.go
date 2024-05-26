@@ -18,6 +18,7 @@ package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -63,4 +64,22 @@ type StoreList struct {
 
 func init() {
 	SchemeBuilder.Register(&Store{}, &StoreList{})
+}
+
+func NewStore(name, namespace, id string, createdAt time.Time) *Store {
+	return &Store{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"authorization-model": name,
+			},
+		},
+		Spec: StoreSpec{
+			Id: id,
+		},
+		Status: StoreStatus{
+			CreatedAt: &metav1.Time{Time: createdAt},
+		},
+	}
 }

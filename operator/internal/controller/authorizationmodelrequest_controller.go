@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-logr/logr"
+	openfga "github.com/openfga/go-sdk"
 	fgaClient "github.com/openfga/go-sdk/client"
 	"github.com/openfga/go-sdk/credentials"
 	"github.com/openfga/language/pkg/go/transformer"
@@ -305,6 +306,37 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 	return authorizationModel, nil
 }
 
+func checkExistingStores(
+	ctx context.Context,
+	openFgaRunClient *fgaClient.OpenFgaClient,
+	storeName string,
+	namespace string,
+) (*extensionsv1.Store, error) {
+	pageSize := openfga.PtrInt32(10)
+	options := fgaClient.ClientListStoresOptions{
+		PageSize: pageSize,
+	}
+	for {
+		stores, err := openFgaRunClient.ListStores(ctx).Options(options).Execute()
+		if err != nil {
+			return nil, err
+		}
+		for _, oldStore := range stores.Stores {
+			if oldStore.Name == storeName {
+				return extensionsv1.NewStore(storeName, namespace, oldStore.Id, oldStore.CreatedAt), nil
+			}
+		}
+		if stores.ContinuationToken == "" {
+			break
+		}
+		options = fgaClient.ClientListStoresOptions{
+			PageSize:          pageSize,
+			ContinuationToken: openfga.PtrString(stores.ContinuationToken),
+		}
+	}
+	return nil, nil
+}
+
 func (r *AuthorizationModelRequestReconciler) createStore(
 	ctx context.Context,
 	req ctrl.Request,
@@ -312,30 +344,22 @@ func (r *AuthorizationModelRequestReconciler) createStore(
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	log *logr.Logger) (*extensionsv1.Store, error) {
 
-	body := fgaClient.ClientCreateStoreRequest{Name: req.Name}
-	// TODO: check if it exists
+	existing, err := checkExistingStores(ctx, openFgaRunClient, req.Name, req.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil {
+		return existing, nil
+	}
 
+	body := fgaClient.ClientCreateStoreRequest{Name: req.Name}
 	store, err := openFgaRunClient.CreateStore(ctx).Body(body).Execute()
 	if err != nil {
 		return nil, err
 	}
 	log.V(0).Info("Created store in OpenFGA", "storeOpenFGA", store)
 
-	storeResource := &extensionsv1.Store{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      req.Name,
-			Namespace: req.Namespace,
-			Labels: map[string]string{
-				"authorization-model": req.Name,
-			},
-		},
-		Spec: extensionsv1.StoreSpec{
-			Id: store.Id,
-		},
-		Status: extensionsv1.StoreStatus{
-			CreatedAt: &metav1.Time{Time: r.Now()},
-		},
-	}
+	storeResource := extensionsv1.NewStore(req.Name, req.Namespace, store.Id, r.Now())
 	if err := ctrl.SetControllerReference(authorizationModelRequest, storeResource, r.Scheme); err != nil {
 		return nil, err
 	}
