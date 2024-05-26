@@ -5,8 +5,8 @@ import (
 	"os"
 )
 
-const OpenfgaApiUrl = "OPEN_FGA_API_URL"
-const OpenFgaApiToken = "OPEN_FGA_API_TOKEN"
+const OpenFgaApiUrl = "OPENFGA_API_URL"
+const OpenFgaApiToken = "OPENFGA_API_TOKEN"
 
 type Config struct {
 	ApiUrl   string
@@ -14,7 +14,7 @@ type Config struct {
 }
 
 func NewConfig() (Config, error) {
-	apiUrl, err := getEnv(OpenfgaApiUrl)
+	apiUrl, err := getEnv(OpenFgaApiUrl)
 	if err != nil {
 		return Config{}, err
 	}

@@ -300,7 +300,7 @@ func metaTime(t time.Time) *metav1.Time {
 	return &metav1.Time{Time: t}
 }
 
-func createDeployment() *appsv1.Deployment {
+func createDeployment() appsv1.Deployment {
 	name := "name"
 	namespace := "namespace"
 	objectMeta := metav1.ObjectMeta{
@@ -311,7 +311,7 @@ func createDeployment() *appsv1.Deployment {
 		},
 	}
 	replicas := int32(1)
-	deployment := &appsv1.Deployment{
+	deployment := appsv1.Deployment{
 		ObjectMeta: objectMeta,
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,

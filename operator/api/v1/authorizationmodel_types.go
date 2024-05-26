@@ -23,13 +23,14 @@ import (
 	"sort"
 )
 
-const OpenFgaAuthModelIdEnv = "OPEN_FGA_AUTH_MODEL_ID"
-const OpenFgaStoreIdEnv = "OPEN_FGA_STORE_ID"
+const OpenFgaAuthModelIdEnv = "OPENFGA_AUTH_MODEL_ID"
+const OpenFgaStoreIdEnv = "OPENFGA_STORE_ID"
 
-const OpenFgaAuthModelVersionLabel = "open-fga-auth-model-version"
-const OpenFgaAuthIdUpdatedAtAnnotation = "open-fga-authe-id-updated-at"
+const OpenFgaStoreLabel = "openfga-store"
+const OpenFgaAuthModelVersionLabel = "openfga-auth-model-version"
 
-const OpenFgaStoreIdUpdatedAtAnnotation = "open-fga-store-id-updated-at"
+const OpenFgaAuthIdUpdatedAtAnnotation = "openfga-auth-id-updated-at"
+const OpenFgaStoreIdUpdatedAtAnnotation = "openfga-store-id-updated-at"
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -100,7 +101,7 @@ func FilterBySchemaVersion(instances []AuthorizationModelInstance, version strin
 	return filtered
 }
 
-func (a *AuthorizationModel) GetVersionFromDeployment(deployment *v1.Deployment) (AuthorizationModelInstance, error) {
+func (a *AuthorizationModel) GetVersionFromDeployment(deployment v1.Deployment) (AuthorizationModelInstance, error) {
 	version, ok := deployment.Labels[OpenFgaAuthModelVersionLabel]
 	if ok {
 		instances := append(a.Spec.LatestModels, a.Spec.Instance)
