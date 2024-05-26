@@ -61,10 +61,6 @@ func (_ realClock) Now() time.Time { return time.Now() }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the AuthorizationModelRequest object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
@@ -120,22 +116,10 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		log.Error(err, "unable to list deployments")
 		return requeueResult, err
 	}
-	if err := r.updateStoreIdOnDeployments(ctx, deployments, store, &log); err != nil {
-		log.Error(err, "unable to update store id on deployments")
-		return requeueResult, err
-	}
 
-	// Update all pods with authorization model
+	r.updateStoreIdOnDeployments(ctx, deployments, store, &log)
 
 	return requeueResult, nil
-}
-
-type EnvValueFromDeployment func(deployment *appsV1.Deployment) string
-
-func envVarValueForStore(store *extensionsv1.Store) EnvValueFromDeployment {
-	return func(deployment *appsV1.Deployment) string {
-		return store.Spec.Id
-	}
 }
 
 func (r *AuthorizationModelRequestReconciler) updateAuthorizationModelIdOnDeployment(
@@ -144,10 +128,23 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModelIdOnDeploy
 	authorizationModel *extensionsv1.AuthorizationModel,
 	log *logr.Logger,
 ) error {
+	for _, deployment := range deployments.Items {
+		authInstance, err := authorizationModel.GetVersionFromDeployment(&deployment)
+		if err != nil {
+			log.Error(err, "unable to get auth instance from deployment", "deploymentName", deployment.Name)
+			continue
+		}
+		if !updateDeploymentEnvVar(&deployment, extensionsv1.OpenFgaAuthModelIdEnv, authInstance.Id) {
+			log.V(1).Info("deployment had correct auth id", "authInstance", authInstance)
+			continue
+		}
 
-	// TODO find correct authorization model to use
+		deployment.Annotations[extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation] = r.Now().UTC().Format(time.RFC3339)
+		deployment.Annotations[extensionsv1.OpenFgaAuthModelVersionLabel] = authInstance.Version
 
-	// TODO: annotations: updated at, schema version
+		r.updateDeploymentSilently(ctx, deployment, log)
+	}
+
 	return nil
 }
 
@@ -155,63 +152,61 @@ func (r *AuthorizationModelRequestReconciler) updateStoreIdOnDeployments(
 	ctx context.Context,
 	deployments appsV1.DeploymentList,
 	store *extensionsv1.Store,
-	log *logr.Logger) error {
-	deploymentsForUpdate, err := getDeploymentEnvVarUpdate(deployments, "OPENFGA_STORE_ID", envVarValueForStore(store))
-	if err != nil {
-		return err
-	}
-	return r.updateDeployments(ctx, deploymentsForUpdate, "openfga-store-id-updated-at", log)
-}
+	log *logr.Logger) {
 
-func getDeploymentEnvVarUpdate(deployments appsV1.DeploymentList, envVarName string, envVarValueGetter EnvValueFromDeployment) ([]appsV1.Deployment, error) {
 	var updates []appsV1.Deployment
 	for _, deployment := range deployments.Items {
-		envVarValue := envVarValueGetter(&deployment)
-		updated := false
-		for i := range deployment.Spec.Template.Spec.Containers {
-			container := &deployment.Spec.Template.Spec.Containers[i]
-			hasEnv := false
-			for j := range container.Env {
-				env := &container.Env[j]
-				if env.Name != envVarName {
-					continue
-				}
-				hasEnv = true
-				if env.Value != envVarValue {
-					updated = true
-					env.Value = envVarValue
-				}
-				break
-			}
-			if hasEnv {
-				continue
-			}
-			container.Env = append(container.Env, corev1.EnvVar{Name: envVarName, Value: envVarValue})
-			updated = true
-		}
-		if updated {
+		if updateDeploymentEnvVar(&deployment, extensionsv1.OpenFgaStoreIdEnv, store.Spec.Id) {
 			updates = append(updates, deployment)
 		}
 	}
-	return updates, nil
+
+	for _, deployment := range updates {
+		deployment.Annotations[extensionsv1.OpenFgaStoreIdUpdatedAtAnnotation] = r.Now().UTC().Format(time.RFC3339)
+
+		r.updateDeploymentSilently(ctx, deployment, log)
+	}
+
 }
 
-func (r *AuthorizationModelRequestReconciler) updateDeployments(
-	ctx context.Context,
-	deployments []appsV1.Deployment,
-	updatedAtAnnotationKey string,
-	log *logr.Logger,
-) error {
-	for _, deployment := range deployments {
-		deployment.Annotations[updatedAtAnnotationKey] = r.Now().UTC().Format(time.RFC3339)
-
-		if err := r.Update(ctx, &deployment); err != nil {
-			log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
-			return err
+func updateDeploymentEnvVar(deployment *appsV1.Deployment, envVarName, envVarValue string) bool {
+	updated := false
+	for i := range deployment.Spec.Template.Spec.Containers {
+		container := &deployment.Spec.Template.Spec.Containers[i]
+		hasEnv := false
+		for j := range container.Env {
+			env := &container.Env[j]
+			if env.Name != envVarName {
+				continue
+			}
+			hasEnv = true
+			if env.Value != envVarValue {
+				updated = true
+				env.Value = envVarValue
+			}
+			break
 		}
-		log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
+		if hasEnv {
+			continue
+		}
+		container.Env = append(container.Env, corev1.EnvVar{Name: envVarName, Value: envVarValue})
+		updated = true
 	}
-	return nil
+
+	return updated
+}
+
+func (r *AuthorizationModelRequestReconciler) updateDeploymentSilently(
+	ctx context.Context,
+	deployment appsV1.Deployment,
+	log *logr.Logger,
+) {
+	if err := r.Update(ctx, &deployment); err != nil {
+		log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
+		return
+	}
+	log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
+	return
 }
 
 func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
@@ -241,9 +236,9 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	authorizationModel.Spec.LatestModels = append(authorizationModel.Spec.LatestModels, authorizationModel.Spec.Instance)
 	authorizationModel.Spec.AuthorizationModel = authorizationModelRequest.Spec.AuthorizationModel
 	authorizationModel.Spec.Instance = extensionsv1.AuthorizationModelInstance{
-		Id:            data.AuthorizationModelId,
-		SchemaVersion: body.SchemaVersion,
-		CreatedAt:     &metav1.Time{Time: r.Now()},
+		Id:        data.AuthorizationModelId,
+		Version:   body.SchemaVersion,
+		CreatedAt: &metav1.Time{Time: r.Now()},
 	}
 	if err = r.Update(ctx, authorizationModel); err != nil {
 		log.Error(err, "unable to update authorization model in Kubernetes", "authorizationModel", authorizationModel)
@@ -285,9 +280,9 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 		},
 		Spec: extensionsv1.AuthorizationModelSpec{
 			Instance: extensionsv1.AuthorizationModelInstance{
-				Id:            data.AuthorizationModelId,
-				SchemaVersion: body.SchemaVersion,
-				CreatedAt:     &metav1.Time{Time: r.Now()},
+				Id:        data.AuthorizationModelId,
+				Version:   body.SchemaVersion,
+				CreatedAt: &metav1.Time{Time: r.Now()},
 			},
 			AuthorizationModel: authorizationModelRequest.Spec.AuthorizationModel,
 		},

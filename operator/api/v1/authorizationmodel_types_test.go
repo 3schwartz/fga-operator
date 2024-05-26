@@ -105,7 +105,7 @@ func TestWhenNoVersionMatchThenReturnError(t *testing.T) {
 	deployment.Labels[OpenFgaAuthModelVersionLabel] = version
 
 	// Act
-	_, err := authModel.getVersion(*deployment)
+	_, err := authModel.GetVersionFromDeployment(deployment)
 
 	// Assert
 	if err == nil {
@@ -222,7 +222,7 @@ func TestAuthorizationModelGetVersionWithLatest(t *testing.T) {
 			deployment.Labels[OpenFgaAuthModelVersionLabel] = version
 
 			// Act
-			actualInstance, err := authModel.getVersion(*deployment)
+			actualInstance, err := authModel.GetVersionFromDeployment(deployment)
 
 			// Assert
 			if err != nil {
@@ -255,7 +255,7 @@ func TestWhenVersionIsSameAsCurrentInstanceThenReturnCurrentInstance(t *testing.
 	deployment.Labels[OpenFgaAuthModelVersionLabel] = version
 
 	// Act
-	actualInstance, err := authModel.getVersion(*deployment)
+	actualInstance, err := authModel.GetVersionFromDeployment(deployment)
 
 	// Assert
 	if err != nil {
@@ -285,7 +285,7 @@ func TestWhenNoVersionIsPresentThenAddReturnLatest(t *testing.T) {
 	deployment := createDeployment()
 
 	// Act
-	actualInstance, err := authModel.getVersion(*deployment)
+	actualInstance, err := authModel.GetVersionFromDeployment(deployment)
 
 	// Assert
 	if err != nil {

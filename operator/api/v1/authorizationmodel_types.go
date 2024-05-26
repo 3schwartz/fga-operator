@@ -23,7 +23,13 @@ import (
 	"sort"
 )
 
+const OpenFgaAuthModelIdEnv = "OPEN_FGA_AUTH_MODEL_ID"
+const OpenFgaStoreIdEnv = "OPEN_FGA_STORE_ID"
+
 const OpenFgaAuthModelVersionLabel = "open-fga-auth-model-version"
+const OpenFgaAuthIdUpdatedAtAnnotation = "open-fga-authe-id-updated-at"
+
+const OpenFgaStoreIdUpdatedAtAnnotation = "open-fga-store-id-updated-at"
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -69,9 +75,9 @@ func init() {
 }
 
 type AuthorizationModelInstance struct {
-	Id            string       `json:"id,omitempty"`
-	SchemaVersion string       `json:"schemaVersion,omitempty"`
-	CreatedAt     *metav1.Time `json:"createdAt,omitempty"`
+	Id        string       `json:"id,omitempty"`
+	Version   string       `json:"version,omitempty"`
+	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
 }
 
 type ByCreatedAtDesc []AuthorizationModelInstance
@@ -87,14 +93,14 @@ func SortAuthorizationModelInstancesByCreatedAtDesc(instances []AuthorizationMod
 func FilterBySchemaVersion(instances []AuthorizationModelInstance, version string) []AuthorizationModelInstance {
 	var filtered []AuthorizationModelInstance
 	for _, instance := range instances {
-		if instance.SchemaVersion == version {
+		if instance.Version == version {
 			filtered = append(filtered, instance)
 		}
 	}
 	return filtered
 }
 
-func (a *AuthorizationModel) getVersion(deployment v1.Deployment) (AuthorizationModelInstance, error) {
+func (a *AuthorizationModel) GetVersionFromDeployment(deployment *v1.Deployment) (AuthorizationModelInstance, error) {
 	version, ok := deployment.Labels[OpenFgaAuthModelVersionLabel]
 	if ok {
 		instances := append(a.Spec.LatestModels, a.Spec.Instance)
@@ -110,8 +116,8 @@ func (a *AuthorizationModel) getVersion(deployment v1.Deployment) (Authorization
 
 func (a *AuthorizationModelInstance) DeepCopy() AuthorizationModelInstance {
 	copied := AuthorizationModelInstance{
-		Id:            a.Id,
-		SchemaVersion: a.SchemaVersion,
+		Id:      a.Id,
+		Version: a.Version,
 	}
 
 	if a.CreatedAt != nil {
