@@ -66,13 +66,13 @@ func (_ realClock) Now() time.Time { return time.Now() }
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	requeueResult := ctrl.Result{RequeueAfter: 45 * time.Second}
 
 	authorizationRequest := &extensionsv1.AuthorizationModelRequest{}
 	if err := r.Get(ctx, req.NamespacedName, authorizationRequest); err != nil {
-		log.Error(err, "unable to fetch authorization model request", "authorizationModelRequestName", req.Name)
+		logger.Error(err, "unable to fetch authorization model request", "authorizationModelRequestName", req.Name)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -86,7 +86,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	case client.IgnoreNotFound(err) != nil:
 		return requeueResult, err
 	case errors.IsNotFound(err):
-		store, err = r.createStore(ctx, req, openFgaRunClient, authorizationRequest, &log)
+		store, err = r.createStore(ctx, req, openFgaRunClient, authorizationRequest, &logger)
 		if err != nil {
 			return requeueResult, err
 		}
@@ -99,7 +99,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	case client.IgnoreNotFound(err) != nil:
 		return requeueResult, err
 	case errors.IsNotFound(err):
-		_, err := r.createAuthorizationModel(ctx, req, openFgaRunClient, authorizationRequest, &log)
+		_, err := r.createAuthorizationModel(ctx, req, openFgaRunClient, authorizationRequest, &logger)
 		if err != nil {
 			return requeueResult, err
 		}
@@ -108,22 +108,22 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		return requeueResult, err
 	}
 
-	if err = r.updateAuthorizationModel(ctx, openFgaRunClient, authorizationRequest, authorizationModel, &log); err != nil {
+	if err = r.updateAuthorizationModel(ctx, openFgaRunClient, authorizationRequest, authorizationModel, &logger); err != nil {
 		return requeueResult, err
 	}
 
 	var deployments appsV1.DeploymentList
 	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingLabels{extensionsv1.OpenFgaStoreLabel: store.Name}); err != nil {
-		log.Error(err, "unable to list deployments")
+		logger.Error(err, "unable to list deployments")
 		return requeueResult, err
 	}
 
 	updates := r.updateStoreIdOnDeployments(deployments, store)
 
-	r.updateAuthorizationModelIdOnDeployment(deployments, updates, authorizationModel, &log)
+	r.updateAuthorizationModelIdOnDeployment(deployments, updates, authorizationModel, &logger)
 
 	for _, deployment := range updates {
-		r.updateDeployment(ctx, &deployment, &log)
+		r.updateDeployment(ctx, &deployment, &logger)
 	}
 
 	return requeueResult, nil
