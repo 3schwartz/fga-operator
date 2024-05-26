@@ -43,6 +43,8 @@ spec:
             properties:
               authorizationModel:
                 type: string
+              version:
+                type: string
             type: object
           status:
             description: AuthorizationModelRequestStatus defines the observed state

@@ -223,7 +223,8 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	authorizationModel *extensionsv1.AuthorizationModel,
 	log *logr.Logger) error {
 
-	if authorizationModelRequest.Spec.AuthorizationModel == authorizationModel.Spec.AuthorizationModel {
+	if authorizationModelRequest.Spec.Version == authorizationModel.Spec.Instance.Version &&
+		authorizationModelRequest.Spec.AuthorizationModel == authorizationModel.Spec.AuthorizationModel {
 		return nil
 	}
 
@@ -244,7 +245,7 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	authorizationModel.Spec.AuthorizationModel = authorizationModelRequest.Spec.AuthorizationModel
 	authorizationModel.Spec.Instance = extensionsv1.AuthorizationModelInstance{
 		Id:        data.AuthorizationModelId,
-		Version:   body.SchemaVersion,
+		Version:   authorizationModelRequest.Spec.Version,
 		CreatedAt: &metav1.Time{Time: r.Now()},
 	}
 	if err = r.Update(ctx, authorizationModel); err != nil {

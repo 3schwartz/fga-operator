@@ -27,6 +27,7 @@ type AuthorizationModelRequestSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	AuthorizationModel string `json:"authorizationModel,omitempty"`
+	Version            string `json:"version,omitempty"`
 }
 
 // AuthorizationModelRequestStatus defines the observed state of AuthorizationModelRequest
