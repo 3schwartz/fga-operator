@@ -117,7 +117,9 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		return requeueResult, err
 	}
 
-	r.updateStoreIdOnDeployments(ctx, deployments, store, &log)
+	failedUpdates := r.updateStoreIdOnDeployments(ctx, deployments, store, &log)
+
+	r.updateAuthorizationModelIdOnDeployment(ctx, deployments, failedUpdates, authorizationModel, &log)
 
 	return requeueResult, nil
 }
@@ -125,10 +127,23 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 func (r *AuthorizationModelRequestReconciler) updateAuthorizationModelIdOnDeployment(
 	ctx context.Context,
 	deployments appsV1.DeploymentList,
+	blackList []appsV1.Deployment,
 	authorizationModel *extensionsv1.AuthorizationModel,
 	log *logr.Logger,
-) error {
+) {
 	for _, deployment := range deployments.Items {
+		blacklisted := false
+		for _, blackListItem := range blackList {
+			if deployment.Name == blackListItem.Name && deployment.Namespace == blackListItem.Namespace {
+				blacklisted = true
+				log.V(1).Info("deployment isn't updated since part of blacklist", "deploymentName", deployment.Name, "deploymentNamespace", deployment.Namespace)
+				break
+			}
+		}
+		if blacklisted {
+			continue
+		}
+
 		authInstance, err := authorizationModel.GetVersionFromDeployment(&deployment)
 		if err != nil {
 			log.Error(err, "unable to get auth instance from deployment", "deploymentName", deployment.Name)
@@ -142,17 +157,15 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModelIdOnDeploy
 		deployment.Annotations[extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation] = r.Now().UTC().Format(time.RFC3339)
 		deployment.Annotations[extensionsv1.OpenFgaAuthModelVersionLabel] = authInstance.Version
 
-		r.updateDeploymentSilently(ctx, deployment, log)
+		r.updateDeployment(ctx, deployment, log)
 	}
-
-	return nil
 }
 
 func (r *AuthorizationModelRequestReconciler) updateStoreIdOnDeployments(
 	ctx context.Context,
 	deployments appsV1.DeploymentList,
 	store *extensionsv1.Store,
-	log *logr.Logger) {
+	log *logr.Logger) []appsV1.Deployment {
 
 	var updates []appsV1.Deployment
 	for _, deployment := range deployments.Items {
@@ -161,12 +174,16 @@ func (r *AuthorizationModelRequestReconciler) updateStoreIdOnDeployments(
 		}
 	}
 
+	failedUpdates := []appsV1.Deployment{}
 	for _, deployment := range updates {
 		deployment.Annotations[extensionsv1.OpenFgaStoreIdUpdatedAtAnnotation] = r.Now().UTC().Format(time.RFC3339)
 
-		r.updateDeploymentSilently(ctx, deployment, log)
+		if !r.updateDeployment(ctx, deployment, log) {
+			failedUpdates = append(failedUpdates, deployment)
+		}
 	}
 
+	return failedUpdates
 }
 
 func updateDeploymentEnvVar(deployment *appsV1.Deployment, envVarName, envVarValue string) bool {
@@ -196,17 +213,17 @@ func updateDeploymentEnvVar(deployment *appsV1.Deployment, envVarName, envVarVal
 	return updated
 }
 
-func (r *AuthorizationModelRequestReconciler) updateDeploymentSilently(
+func (r *AuthorizationModelRequestReconciler) updateDeployment(
 	ctx context.Context,
 	deployment appsV1.Deployment,
 	log *logr.Logger,
-) {
+) bool {
 	if err := r.Update(ctx, &deployment); err != nil {
 		log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
-		return
+		return false
 	}
 	log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
-	return
+	return true
 }
 
 func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(

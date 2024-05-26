@@ -113,17 +113,3 @@ func (a *AuthorizationModel) GetVersionFromDeployment(deployment *v1.Deployment)
 	}
 	return a.Spec.Instance, nil
 }
-
-func (a *AuthorizationModelInstance) DeepCopy() AuthorizationModelInstance {
-	copied := AuthorizationModelInstance{
-		Id:      a.Id,
-		Version: a.Version,
-	}
-
-	if a.CreatedAt != nil {
-		copiedTime := *a.CreatedAt
-		copied.CreatedAt = &copiedTime
-	}
-
-	return copied
-}

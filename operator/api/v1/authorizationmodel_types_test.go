@@ -19,40 +19,40 @@ func TestSortAuthorizationModelInstancesByCreatedAtDesc(t *testing.T) {
 		{
 			name: "Sorted order",
 			input: []AuthorizationModelInstance{
-				{Id: "1", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "2", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "3", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "1", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "2", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "3", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 			},
 			expected: []AuthorizationModelInstance{
-				{Id: "2", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "1", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "3", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "2", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "1", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "3", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 			},
 		},
 		{
 			name: "Already sorted",
 			input: []AuthorizationModelInstance{
-				{Id: "2", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "1", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "3", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "2", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "1", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "3", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 			},
 			expected: []AuthorizationModelInstance{
-				{Id: "2", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "1", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "3", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "2", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "1", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "3", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 			},
 		},
 		{
 			name: "Reverse sorted",
 			input: []AuthorizationModelInstance{
-				{Id: "3", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "1", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "2", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "3", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "1", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "2", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 			},
 			expected: []AuthorizationModelInstance{
-				{Id: "2", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "1", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
-				{Id: "3", SchemaVersion: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "2", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "1", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+				{Id: "3", Version: "v1", CreatedAt: &metav1.Time{Time: time.Date(2021, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 			},
 		},
 	}
@@ -73,9 +73,9 @@ func TestWhenNoVersionMatchThenReturnError(t *testing.T) {
 	version := "1.2"
 	id := uuid.NewString()
 	instance := AuthorizationModelInstance{
-		Id:            id,
-		SchemaVersion: uuid.NewString(),
-		CreatedAt:     currentTime,
+		Id:        id,
+		Version:   uuid.NewString(),
+		CreatedAt: currentTime,
 	}
 	authModel := AuthorizationModel{
 		Status: AuthorizationModelStatus{},
@@ -84,19 +84,19 @@ func TestWhenNoVersionMatchThenReturnError(t *testing.T) {
 			AuthorizationModel: "AuthorizationModel",
 			LatestModels: []AuthorizationModelInstance{
 				{
-					Id:            uuid.NewString(),
-					SchemaVersion: uuid.NewString(),
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 7)),
+					Id:        uuid.NewString(),
+					Version:   uuid.NewString(),
+					CreatedAt: metaTime(currentTime.Add(-time.Second * 7)),
 				},
 				{
-					Id:            uuid.NewString(),
-					SchemaVersion: uuid.NewString(),
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 5)),
+					Id:        uuid.NewString(),
+					Version:   uuid.NewString(),
+					CreatedAt: metaTime(currentTime.Add(-time.Second * 5)),
 				},
 				{
-					Id:            uuid.NewString(),
-					SchemaVersion: uuid.NewString(),
-					CreatedAt:     metaTime(currentTime.Add(-time.Second * 6)),
+					Id:        uuid.NewString(),
+					Version:   uuid.NewString(),
+					CreatedAt: metaTime(currentTime.Add(-time.Second * 6)),
 				},
 			},
 		},
@@ -190,9 +190,9 @@ func TestAuthorizationModelGetVersionWithLatest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
 			instance := AuthorizationModelInstance{
-				Id:            tt.currentId,
-				SchemaVersion: tt.currentSchemaVersion,
-				CreatedAt:     currentTime,
+				Id:        tt.currentId,
+				Version:   tt.currentSchemaVersion,
+				CreatedAt: currentTime,
 			}
 			authModel := AuthorizationModel{
 				Status: AuthorizationModelStatus{},
@@ -201,19 +201,19 @@ func TestAuthorizationModelGetVersionWithLatest(t *testing.T) {
 					AuthorizationModel: "AuthorizationModel",
 					LatestModels: []AuthorizationModelInstance{
 						{
-							Id:            tt.firstLatestId,
-							SchemaVersion: tt.firstLatestVersion,
-							CreatedAt:     metaTime(currentTime.Add(-time.Second * 7)),
+							Id:        tt.firstLatestId,
+							Version:   tt.firstLatestVersion,
+							CreatedAt: metaTime(currentTime.Add(-time.Second * 7)),
 						},
 						{
-							Id:            tt.secondLatestId,
-							SchemaVersion: tt.secondLatestVersion,
-							CreatedAt:     metaTime(currentTime.Add(-time.Second * 5)),
+							Id:        tt.secondLatestId,
+							Version:   tt.secondLatestVersion,
+							CreatedAt: metaTime(currentTime.Add(-time.Second * 5)),
 						},
 						{
-							Id:            tt.thirdLatestId,
-							SchemaVersion: tt.thirdLatestVersion,
-							CreatedAt:     metaTime(currentTime.Add(-time.Second * 6)),
+							Id:        tt.thirdLatestId,
+							Version:   tt.thirdLatestVersion,
+							CreatedAt: metaTime(currentTime.Add(-time.Second * 6)),
 						},
 					},
 				},
@@ -240,9 +240,9 @@ func TestWhenVersionIsSameAsCurrentInstanceThenReturnCurrentInstance(t *testing.
 	currentTime := metaTime(time.Now())
 	version := "1.2"
 	instance := AuthorizationModelInstance{
-		Id:            uuid.NewString(),
-		SchemaVersion: version,
-		CreatedAt:     currentTime,
+		Id:        uuid.NewString(),
+		Version:   version,
+		CreatedAt: currentTime,
 	}
 	authModel := AuthorizationModel{
 		Status: AuthorizationModelStatus{},
@@ -270,9 +270,9 @@ func TestWhenNoVersionIsPresentThenAddReturnLatest(t *testing.T) {
 	// Arrange
 	currentTime := metaTime(time.Now())
 	instance := AuthorizationModelInstance{
-		Id:            uuid.NewString(),
-		SchemaVersion: "1.2",
-		CreatedAt:     currentTime,
+		Id:        uuid.NewString(),
+		Version:   "1.2",
+		CreatedAt: currentTime,
 	}
 	authModel := AuthorizationModel{
 		Status: AuthorizationModelStatus{},
