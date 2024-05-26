@@ -86,7 +86,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	case client.IgnoreNotFound(err) != nil:
 		return requeueResult, err
 	case errors.IsNotFound(err):
-		store, err = r.createStore(ctx, req, openFgaRunClient, authorizationRequest, &logger)
+		store, err = r.createStoreResource(ctx, req, openFgaRunClient, authorizationRequest, &logger)
 		if err != nil {
 			return requeueResult, err
 		}
@@ -313,6 +313,7 @@ func checkExistingStores(
 	storeName string,
 	namespace string,
 ) (*extensionsv1.Store, error) {
+	// TODO: Move to openfga client
 	pageSize := openfga.PtrInt32(10)
 	options := fgaClient.ClientListStoresOptions{
 		PageSize: pageSize,
@@ -338,29 +339,43 @@ func checkExistingStores(
 	return nil, nil
 }
 
-func (r *AuthorizationModelRequestReconciler) createStore(
+func createStore(
 	ctx context.Context,
-	req ctrl.Request,
 	openFgaRunClient *fgaClient.OpenFgaClient,
-	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
-	log *logr.Logger) (*extensionsv1.Store, error) {
-
-	existing, err := checkExistingStores(ctx, openFgaRunClient, req.Name, req.Namespace)
-	if err != nil {
-		return nil, err
-	}
-	if existing != nil {
-		return existing, nil
-	}
-
-	body := fgaClient.ClientCreateStoreRequest{Name: req.Name}
+	storeName string,
+	namespace string,
+	time time.Time,
+	log *logr.Logger,
+) (*extensionsv1.Store, error) {
+	// TODO: Move to openfga client
+	body := fgaClient.ClientCreateStoreRequest{Name: storeName}
 	store, err := openFgaRunClient.CreateStore(ctx).Body(body).Execute()
 	if err != nil {
 		return nil, err
 	}
 	log.V(0).Info("Created store in OpenFGA", "storeOpenFGA", store)
 
-	storeResource := extensionsv1.NewStore(req.Name, req.Namespace, store.Id, r.Now())
+	return extensionsv1.NewStore(storeName, namespace, store.Id, time), nil
+}
+
+func (r *AuthorizationModelRequestReconciler) createStoreResource(
+	ctx context.Context,
+	req ctrl.Request,
+	openFgaRunClient *fgaClient.OpenFgaClient,
+	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
+	log *logr.Logger) (*extensionsv1.Store, error) {
+
+	storeResource, err := checkExistingStores(ctx, openFgaRunClient, req.Name, req.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	if storeResource == nil {
+		storeResource, err = createStore(ctx, openFgaRunClient, req.Name, req.Namespace, r.Now(), log)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if err := ctrl.SetControllerReference(authorizationModelRequest, storeResource, r.Scheme); err != nil {
 		return nil, err
 	}
@@ -390,6 +405,8 @@ func (r *AuthorizationModelRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 	if r.Clock == nil {
 		r.Clock = realClock{}
 	}
+
+	// TODO: Create index on deployment
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&extensionsv1.AuthorizationModelRequest{}).
