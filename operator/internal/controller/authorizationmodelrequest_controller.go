@@ -20,15 +20,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-logr/logr"
-	openfga "github.com/openfga/go-sdk"
-	fgaClient "github.com/openfga/go-sdk/client"
-	"github.com/openfga/go-sdk/credentials"
-	"github.com/openfga/language/pkg/go/transformer"
 	appsV1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/json"
 	openfgaInternal "openfga-controller/internal/openfga"
 	"time"
 
@@ -44,6 +39,7 @@ import (
 type AuthorizationModelRequestReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	openfgaInternal.PermissionServiceFactory
 	openfgaInternal.Config
 	Clock
 }
@@ -76,7 +72,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	openFgaRunClient, err := r.createOpenFgaClient()
+	openFgaService, err := r.PermissionServiceFactory.GetService(r.Config)
 	if err != nil {
 		return requeueResult, err
 	}
@@ -86,12 +82,12 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	case client.IgnoreNotFound(err) != nil:
 		return requeueResult, err
 	case errors.IsNotFound(err):
-		store, err = r.createStoreResource(ctx, req, openFgaRunClient, authorizationRequest, &logger)
+		store, err = r.createStoreResource(ctx, req, openFgaService, authorizationRequest, &logger)
 		if err != nil {
 			return requeueResult, err
 		}
 	}
-	openFgaRunClient.SetStoreId(store.Spec.Id)
+	openFgaService.SetStoreId(store.Spec.Id)
 
 	authorizationModel := &extensionsv1.AuthorizationModel{}
 	err = r.Get(ctx, req.NamespacedName, authorizationModel)
@@ -99,16 +95,16 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	case client.IgnoreNotFound(err) != nil:
 		return requeueResult, err
 	case errors.IsNotFound(err):
-		_, err := r.createAuthorizationModel(ctx, req, openFgaRunClient, authorizationRequest, &logger)
+		_, err := r.createAuthorizationModel(ctx, req, openFgaService, authorizationRequest, &logger)
 		if err != nil {
 			return requeueResult, err
 		}
 	}
-	if err = openFgaRunClient.SetAuthorizationModelId(authorizationModel.Spec.Instance.Id); err != nil {
+	if err = openFgaService.SetAuthorizationModelId(authorizationModel.Spec.Instance.Id); err != nil {
 		return requeueResult, err
 	}
 
-	if err = r.updateAuthorizationModel(ctx, openFgaRunClient, authorizationRequest, authorizationModel, &logger); err != nil {
+	if err = r.updateAuthorizationModel(ctx, openFgaService, authorizationRequest, authorizationModel, &logger); err != nil {
 		return requeueResult, err
 	}
 
@@ -218,7 +214,7 @@ func (r *AuthorizationModelRequestReconciler) updateDeployment(
 
 func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	ctx context.Context,
-	openFgaRunClient *fgaClient.OpenFgaClient,
+	openFgaRunClient openfgaInternal.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	authorizationModel *extensionsv1.AuthorizationModel,
 	log *logr.Logger) error {
@@ -228,23 +224,15 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 		return nil
 	}
 
-	generatedJsonString, err := transformer.TransformDSLToJSON(authorizationModelRequest.Spec.AuthorizationModel)
+	authModelId, err := openFgaRunClient.CreateAuthorizationModel(ctx, authorizationModelRequest, log)
 	if err != nil {
 		return err
 	}
-	var body fgaClient.ClientWriteAuthorizationModelRequest
-	if err := json.Unmarshal([]byte(generatedJsonString), &body); err != nil {
-	}
-	data, err := openFgaRunClient.WriteAuthorizationModel(ctx).Body(body).Execute()
-	if err != nil {
-		return err
-	}
-	log.V(0).Info("Created new instance of authorization model in OpenFGA", "authorizationModelBody", body, "authorizationModelData", data)
 
 	authorizationModel.Spec.LatestModels = append(authorizationModel.Spec.LatestModels, authorizationModel.Spec.Instance)
 	authorizationModel.Spec.AuthorizationModel = authorizationModelRequest.Spec.AuthorizationModel
 	authorizationModel.Spec.Instance = extensionsv1.AuthorizationModelInstance{
-		Id:        data.AuthorizationModelId,
+		Id:        authModelId,
 		Version:   authorizationModelRequest.Spec.Version,
 		CreatedAt: &metav1.Time{Time: r.Now()},
 	}
@@ -261,116 +249,42 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 	ctx context.Context,
 	req ctrl.Request,
-	openFgaRunClient *fgaClient.OpenFgaClient,
+	openFgaRunClient openfgaInternal.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	log *logr.Logger) (*extensionsv1.AuthorizationModel, error) {
 
-	generatedJsonString, err := transformer.TransformDSLToJSON(authorizationModelRequest.Spec.AuthorizationModel)
+	authModelId, err := openFgaRunClient.CreateAuthorizationModel(ctx, authorizationModelRequest, log)
 	if err != nil {
 		return nil, err
 	}
-	var body fgaClient.ClientWriteAuthorizationModelRequest
-	if err := json.Unmarshal([]byte(generatedJsonString), &body); err != nil {
-	}
-	data, err := openFgaRunClient.WriteAuthorizationModel(ctx).Body(body).Execute()
-	if err != nil {
-		return nil, err
-	}
-	log.V(0).Info("Created authorization model in OpenFGA", "authorizationModelBody", body, "authorizationModelData", data)
 
-	authorizationModel := &extensionsv1.AuthorizationModel{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      req.Name,
-			Namespace: req.Namespace,
-			Labels: map[string]string{
-				"authorization-model": req.Name,
-			},
-		},
-		Spec: extensionsv1.AuthorizationModelSpec{
-			Instance: extensionsv1.AuthorizationModelInstance{
-				Id:        data.AuthorizationModelId,
-				Version:   body.SchemaVersion,
-				CreatedAt: &metav1.Time{Time: r.Now()},
-			},
-			AuthorizationModel: authorizationModelRequest.Spec.AuthorizationModel,
-		},
-	}
-	if err := ctrl.SetControllerReference(authorizationModelRequest, authorizationModel, r.Scheme); err != nil {
+	authorizationModel := extensionsv1.NewAuthorizationModel(req.Name, req.Namespace, authModelId, authorizationModelRequest.Spec.AuthorizationModel, authorizationModelRequest.Spec.Version, r.Now())
+
+	if err := ctrl.SetControllerReference(authorizationModelRequest, &authorizationModel, r.Scheme); err != nil {
 		return nil, err
 	}
-	if err := r.Create(ctx, authorizationModel); client.IgnoreAlreadyExists(err) != nil {
+	if err := r.Create(ctx, &authorizationModel); client.IgnoreAlreadyExists(err) != nil {
 		log.Error(err, fmt.Sprintf("Failed to authorization model %s", req.Name))
 		return nil, err
 	}
 	log.V(0).Info("Created authorization model in Kubernetes", "authorizationModel", authorizationModel)
 
-	return authorizationModel, nil
-}
-
-func checkExistingStores(
-	ctx context.Context,
-	openFgaRunClient *fgaClient.OpenFgaClient,
-	storeName string,
-	namespace string,
-) (*extensionsv1.Store, error) {
-	// TODO: Move to openfga client
-	pageSize := openfga.PtrInt32(10)
-	options := fgaClient.ClientListStoresOptions{
-		PageSize: pageSize,
-	}
-	for {
-		stores, err := openFgaRunClient.ListStores(ctx).Options(options).Execute()
-		if err != nil {
-			return nil, err
-		}
-		for _, oldStore := range stores.Stores {
-			if oldStore.Name == storeName {
-				return extensionsv1.NewStore(storeName, namespace, oldStore.Id, oldStore.CreatedAt), nil
-			}
-		}
-		if stores.ContinuationToken == "" {
-			break
-		}
-		options = fgaClient.ClientListStoresOptions{
-			PageSize:          pageSize,
-			ContinuationToken: openfga.PtrString(stores.ContinuationToken),
-		}
-	}
-	return nil, nil
-}
-
-func createStore(
-	ctx context.Context,
-	openFgaRunClient *fgaClient.OpenFgaClient,
-	storeName string,
-	namespace string,
-	time time.Time,
-	log *logr.Logger,
-) (*extensionsv1.Store, error) {
-	// TODO: Move to openfga client
-	body := fgaClient.ClientCreateStoreRequest{Name: storeName}
-	store, err := openFgaRunClient.CreateStore(ctx).Body(body).Execute()
-	if err != nil {
-		return nil, err
-	}
-	log.V(0).Info("Created store in OpenFGA", "storeOpenFGA", store)
-
-	return extensionsv1.NewStore(storeName, namespace, store.Id, time), nil
+	return &authorizationModel, nil
 }
 
 func (r *AuthorizationModelRequestReconciler) createStoreResource(
 	ctx context.Context,
 	req ctrl.Request,
-	openFgaRunClient *fgaClient.OpenFgaClient,
+	openFgaRunClient openfgaInternal.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	log *logr.Logger) (*extensionsv1.Store, error) {
 
-	storeResource, err := checkExistingStores(ctx, openFgaRunClient, req.Name, req.Namespace)
+	storeResource, err := openFgaRunClient.CheckExistingStores(ctx, req.Name, req.Namespace)
 	if err != nil {
 		return nil, err
 	}
 	if storeResource == nil {
-		storeResource, err = createStore(ctx, openFgaRunClient, req.Name, req.Namespace, r.Now(), log)
+		storeResource, err = openFgaRunClient.CreateStore(ctx, req.Name, req.Namespace, log)
 		if err != nil {
 			return nil, err
 		}
@@ -386,18 +300,6 @@ func (r *AuthorizationModelRequestReconciler) createStoreResource(
 	log.V(0).Info("Created store in Kubernetes", "storeKubernetes", storeResource)
 
 	return storeResource, nil
-}
-
-func (r *AuthorizationModelRequestReconciler) createOpenFgaClient() (*fgaClient.OpenFgaClient, error) {
-	return fgaClient.NewSdkClient(&fgaClient.ClientConfiguration{
-		ApiUrl: r.Config.ApiUrl,
-		Credentials: &credentials.Credentials{
-			Method: credentials.CredentialsMethodApiToken,
-			Config: &credentials.Config{
-				ApiToken: r.Config.ApiToken,
-			},
-		},
-	})
 }
 
 // SetupWithManager sets up the controller with the Manager.

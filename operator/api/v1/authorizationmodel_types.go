@@ -21,6 +21,7 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sort"
+	"time"
 )
 
 const OpenFgaAuthModelIdEnv = "OPENFGA_AUTH_MODEL_ID"
@@ -99,6 +100,26 @@ func FilterBySchemaVersion(instances []AuthorizationModelInstance, version strin
 		}
 	}
 	return filtered
+}
+
+func NewAuthorizationModel(name, namespace, authModelId, version, authModel string, now time.Time) AuthorizationModel {
+	return AuthorizationModel{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"authorization-model": name,
+			},
+		},
+		Spec: AuthorizationModelSpec{
+			Instance: AuthorizationModelInstance{
+				Id:        authModelId,
+				Version:   version,
+				CreatedAt: &metav1.Time{Time: now},
+			},
+			AuthorizationModel: authModel,
+		},
+	}
 }
 
 func (a *AuthorizationModel) GetVersionFromDeployment(deployment v1.Deployment) (AuthorizationModelInstance, error) {
