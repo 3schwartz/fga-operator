@@ -9,6 +9,7 @@ import (
 	"github.com/openfga/go-sdk/credentials"
 	"github.com/openfga/language/pkg/go/transformer"
 	extensionsv1 "openfga-controller/api/v1"
+	"time"
 )
 
 type PermissionServiceFactory interface {
@@ -19,8 +20,15 @@ type PermissionService interface {
 	SetStoreId(storeId string)
 	SetAuthorizationModelId(authorizationModelId string) error
 	CreateAuthorizationModel(ctx context.Context, authorizationModelRequest *extensionsv1.AuthorizationModelRequest, log *logr.Logger) (string, error)
-	CheckExistingStores(ctx context.Context, storeName string, namespace string) (*extensionsv1.Store, error)
-	CreateStore(ctx context.Context, storeName, namespace string, log *logr.Logger) (*extensionsv1.Store, error)
+	CheckExistingStores(ctx context.Context, storeName string) (*Store, error)
+	CreateStore(ctx context.Context, storeName, log *logr.Logger) (*Store, error)
+}
+
+type Store struct {
+	Id        string
+	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type OpenFgaServiceFactory struct{}
@@ -55,7 +63,7 @@ func (s *OpenFgaService) SetStoreId(storeId string) {
 	s.client.SetStoreId(storeId)
 }
 
-func (s *OpenFgaService) CheckExistingStores(ctx context.Context, storeName string, namespace string) (*extensionsv1.Store, error) {
+func (s *OpenFgaService) CheckExistingStores(ctx context.Context, storeName string) (*Store, error) {
 	pageSize := openfga.PtrInt32(10)
 	options := ofgaClient.ClientListStoresOptions{
 		PageSize: pageSize,
@@ -67,7 +75,12 @@ func (s *OpenFgaService) CheckExistingStores(ctx context.Context, storeName stri
 		}
 		for _, oldStore := range stores.Stores {
 			if oldStore.Name == storeName {
-				return extensionsv1.NewStore(storeName, namespace, oldStore.Id, oldStore.CreatedAt), nil
+				return &Store{
+					Id:        oldStore.Id,
+					Name:      oldStore.Name,
+					CreatedAt: oldStore.CreatedAt,
+					UpdatedAt: oldStore.UpdatedAt,
+				}, nil
 			}
 		}
 		if stores.ContinuationToken == "" {
@@ -81,14 +94,19 @@ func (s *OpenFgaService) CheckExistingStores(ctx context.Context, storeName stri
 	return nil, nil
 }
 
-func (s *OpenFgaService) CreateStore(ctx context.Context, storeName, namespace string, log *logr.Logger) (*extensionsv1.Store, error) {
+func (s *OpenFgaService) CreateStore(ctx context.Context, storeName string, log *logr.Logger) (*Store, error) {
 	body := ofgaClient.ClientCreateStoreRequest{Name: storeName}
 	store, err := s.client.CreateStore(ctx).Body(body).Execute()
 	if err != nil {
 		return nil, err
 	}
 	log.V(0).Info("Created store in OpenFGA", "storeOpenFGA", store)
-	return extensionsv1.NewStore(storeName, namespace, store.Id, store.CreatedAt), nil
+	return &Store{
+		Id:        store.Id,
+		Name:      store.Name,
+		CreatedAt: store.CreatedAt,
+		UpdatedAt: store.UpdatedAt,
+	}, nil
 }
 
 func (s *OpenFgaService) SetAuthorizationModelId(authorizationModelId string) error {

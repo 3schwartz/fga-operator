@@ -1,6 +1,11 @@
 # operator
 // TODO(user): Add simple overview of use/purpose
 
+## Generate mocks
+```
+mockgen -source=internal/openfga/openfga_service.go -destination=internal/openfga/mock_openfga_service.go -package openfga
+```
+
 ## Description
 // TODO(user): An in-depth paragraph about your project and overview of use
 
