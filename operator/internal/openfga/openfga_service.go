@@ -21,14 +21,13 @@ type PermissionService interface {
 	SetAuthorizationModelId(authorizationModelId string) error
 	CreateAuthorizationModel(ctx context.Context, authorizationModelRequest *extensionsv1.AuthorizationModelRequest, log *logr.Logger) (string, error)
 	CheckExistingStores(ctx context.Context, storeName string) (*Store, error)
-	CreateStore(ctx context.Context, storeName, log *logr.Logger) (*Store, error)
+	CreateStore(ctx context.Context, storeName string, log *logr.Logger) (*Store, error)
 }
 
 type Store struct {
 	Id        string
 	Name      string
 	CreatedAt time.Time
-	UpdatedAt time.Time
 }
 
 type OpenFgaServiceFactory struct{}
@@ -79,7 +78,6 @@ func (s *OpenFgaService) CheckExistingStores(ctx context.Context, storeName stri
 					Id:        oldStore.Id,
 					Name:      oldStore.Name,
 					CreatedAt: oldStore.CreatedAt,
-					UpdatedAt: oldStore.UpdatedAt,
 				}, nil
 			}
 		}
@@ -105,7 +103,6 @@ func (s *OpenFgaService) CreateStore(ctx context.Context, storeName string, log 
 		Id:        store.Id,
 		Name:      store.Name,
 		CreatedAt: store.CreatedAt,
-		UpdatedAt: store.UpdatedAt,
 	}, nil
 }
 

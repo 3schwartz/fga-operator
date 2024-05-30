@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/clock"
 	openfgaInternal "openfga-controller/internal/openfga"
 	"time"
 
@@ -47,10 +48,6 @@ type AuthorizationModelRequestReconciler struct {
 type Clock interface {
 	Now() time.Time
 }
-
-type realClock struct{}
-
-func (_ realClock) Now() time.Time { return time.Now() }
 
 //+kubebuilder:rbac:groups=extensions.openfga-controller,resources=authorizationmodelrequests,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=extensions.openfga-controller,resources=authorizationmodelrequests/status,verbs=get;update;patch
@@ -214,7 +211,7 @@ func (r *AuthorizationModelRequestReconciler) updateDeployment(
 
 func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	ctx context.Context,
-	openFgaRunClient openfgaInternal.PermissionService,
+	openFgaService openfgaInternal.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	authorizationModel *extensionsv1.AuthorizationModel,
 	log *logr.Logger) error {
@@ -224,7 +221,7 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 		return nil
 	}
 
-	authModelId, err := openFgaRunClient.CreateAuthorizationModel(ctx, authorizationModelRequest, log)
+	authModelId, err := openFgaService.CreateAuthorizationModel(ctx, authorizationModelRequest, log)
 	if err != nil {
 		return err
 	}
@@ -249,11 +246,11 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 	ctx context.Context,
 	req ctrl.Request,
-	openFgaRunClient openfgaInternal.PermissionService,
+	openFgaService openfgaInternal.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	log *logr.Logger) (*extensionsv1.AuthorizationModel, error) {
 
-	authModelId, err := openFgaRunClient.CreateAuthorizationModel(ctx, authorizationModelRequest, log)
+	authModelId, err := openFgaService.CreateAuthorizationModel(ctx, authorizationModelRequest, log)
 	if err != nil {
 		return nil, err
 	}
@@ -275,20 +272,21 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 func (r *AuthorizationModelRequestReconciler) createStoreResource(
 	ctx context.Context,
 	req ctrl.Request,
-	openFgaRunClient openfgaInternal.PermissionService,
+	openFgaService openfgaInternal.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	log *logr.Logger) (*extensionsv1.Store, error) {
 
-	storeResource, err := openFgaRunClient.CheckExistingStores(ctx, req.Name, req.Namespace)
+	store, err := openFgaService.CheckExistingStores(ctx, req.Name)
 	if err != nil {
 		return nil, err
 	}
-	if storeResource == nil {
-		storeResource, err = openFgaRunClient.CreateStore(ctx, req.Name, req.Namespace, log)
+	if store == nil {
+		store, err = openFgaService.CreateStore(ctx, req.Name, log)
 		if err != nil {
 			return nil, err
 		}
 	}
+	storeResource := extensionsv1.NewStore(store.Name, req.Namespace, store.Id, store.CreatedAt)
 
 	if err := ctrl.SetControllerReference(authorizationModelRequest, storeResource, r.Scheme); err != nil {
 		return nil, err
@@ -305,7 +303,7 @@ func (r *AuthorizationModelRequestReconciler) createStoreResource(
 // SetupWithManager sets up the controller with the Manager.
 func (r *AuthorizationModelRequestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.Clock == nil {
-		r.Clock = realClock{}
+		r.Clock = clock.RealClock{}
 	}
 
 	// TODO: Create index on deployment

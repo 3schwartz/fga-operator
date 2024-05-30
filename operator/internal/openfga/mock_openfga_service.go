@@ -105,7 +105,7 @@ func (mr *MockPermissionServiceMockRecorder) CreateAuthorizationModel(ctx, autho
 }
 
 // CreateStore mocks base method.
-func (m *MockPermissionService) CreateStore(ctx context.Context, storeName, log *logr.Logger) (*Store, error) {
+func (m *MockPermissionService) CreateStore(ctx context.Context, storeName string, log *logr.Logger) (*Store, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateStore", ctx, storeName, log)
 	ret0, _ := ret[0].(*Store)

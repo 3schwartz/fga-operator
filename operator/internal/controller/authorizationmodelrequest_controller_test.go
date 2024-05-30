@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 /*
 Copyright 2024.
 
@@ -21,6 +18,10 @@ package controller
 
 import (
 	"context"
+	"github.com/golang/mock/gomock"
+	"k8s.io/utils/clock"
+	openfgainternal "openfga-controller/internal/openfga"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -43,11 +44,11 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		authorizationmodelrequest := &extensionsv1.AuthorizationModelRequest{}
+		authorizationModelRequest := &extensionsv1.AuthorizationModelRequest{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind AuthorizationModelRequest")
-			err := k8sClient.Get(ctx, typeNamespacedName, authorizationmodelrequest)
+			err := k8sClient.Get(ctx, typeNamespacedName, authorizationModelRequest)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &extensionsv1.AuthorizationModelRequest{
 					ObjectMeta: metav1.ObjectMeta{
@@ -71,9 +72,30 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
+			ctrl := gomock.NewController(GinkgoT())
+			defer ctrl.Finish()
+			mockFactory := openfgainternal.NewMockPermissionServiceFactory(ctrl)
+			mockService := openfgainternal.NewMockPermissionService(ctrl)
+
+			store := openfgainternal.Store{
+				Id:        "foo",
+				Name:      "bar",
+				CreatedAt: time.Now(),
+			}
+			authModelId := "123"
+
+			mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil)
+			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
+			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store, nil)
+			mockService.EXPECT().SetStoreId(gomock.Any())
+			mockService.EXPECT().CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).Return(authModelId, nil)
+			mockService.EXPECT().SetAuthorizationModelId(gomock.Any()).Return(nil)
+
 			controllerReconciler := &AuthorizationModelRequestReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				PermissionServiceFactory: mockFactory,
+				Clock:                    clock.RealClock{},
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
