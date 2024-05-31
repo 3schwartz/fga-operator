@@ -80,14 +80,8 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			By("creating the custom resource for the Kind AuthorizationModelRequest")
 			err := k8sClient.Get(ctx, typeNamespacedName, authorizationModelRequest)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &extensionsv1.AuthorizationModelRequest{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
-					// TODO(user): Specify other spec details if needed.
-				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+				resource := createAuthorizationModelRequest(resourceName, namespaceName)
+				Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
 			}
 		})
 
@@ -118,7 +112,9 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
 			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store, nil)
 			mockService.EXPECT().SetStoreId(gomock.Any())
-			mockService.EXPECT().CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).Return(authModelId, nil)
+			mockService.EXPECT().
+				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(authModelId, nil)
 			mockService.EXPECT().SetAuthorizationModelId(gomock.Any()).Return(nil)
 
 			controllerReconciler := &AuthorizationModelRequestReconciler{
@@ -161,6 +157,38 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				mockService, &authRequest, &logger)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(storeResource).NotTo(BeNil())
+			Expect(storeResource.Name).To(Equal(resourceName))
+			Expect(storeResource.Namespace).To(Equal(namespaceName))
+		})
+
+		It("given no existing store when create store resource then create new store", func() {
+			ctrl := gomock.NewController(GinkgoT())
+			defer ctrl.Finish()
+			storeId := uuid.NewString()
+			mockFactory := openfgainternal.NewMockPermissionServiceFactory(ctrl)
+			mockService := openfgainternal.NewMockPermissionService(ctrl)
+			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
+			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&openfgainternal.Store{
+				Id:        storeId,
+				Name:      resourceName,
+				CreatedAt: time.Now(),
+			}, nil)
+
+			controllerReconciler := &AuthorizationModelRequestReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				PermissionServiceFactory: mockFactory,
+				Clock:                    clock.RealClock{},
+			}
+
+			authRequest := createAuthorizationModelRequest(resourceName, namespaceName)
+
+			storeResource, err := controllerReconciler.createStoreResource(
+				context.Background(), reconcile.Request{NamespacedName: typeNamespacedName},
+				mockService, &authRequest, &logger)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(storeResource).NotTo(BeNil())
+			Expect(storeResource.Spec.Id).To(Equal(storeId))
 			Expect(storeResource.Name).To(Equal(resourceName))
 			Expect(storeResource.Namespace).To(Equal(namespaceName))
 		})

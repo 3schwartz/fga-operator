@@ -92,7 +92,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	case client.IgnoreNotFound(err) != nil:
 		return requeueResult, err
 	case errors.IsNotFound(err):
-		_, err := r.createAuthorizationModel(ctx, req, openFgaService, authorizationRequest, &logger)
+		authorizationModel, err = r.createAuthorizationModel(ctx, req, openFgaService, authorizationRequest, &logger)
 		if err != nil {
 			return requeueResult, err
 		}
@@ -255,7 +255,7 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 		return nil, err
 	}
 
-	authorizationModel := extensionsv1.NewAuthorizationModel(req.Name, req.Namespace, authModelId, authorizationModelRequest.Spec.AuthorizationModel, authorizationModelRequest.Spec.Version, r.Now())
+	authorizationModel := extensionsv1.NewAuthorizationModel(req.Name, req.Namespace, authModelId, authorizationModelRequest.Spec.Version, authorizationModelRequest.Spec.AuthorizationModel, r.Now())
 
 	if err := ctrl.SetControllerReference(authorizationModelRequest, &authorizationModel, r.Scheme); err != nil {
 		return nil, err
