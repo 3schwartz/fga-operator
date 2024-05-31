@@ -73,31 +73,14 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	if err != nil {
 		return requeueResult, err
 	}
-	store := &extensionsv1.Store{}
-	err = r.Get(ctx, req.NamespacedName, store)
-	switch {
-	case client.IgnoreNotFound(err) != nil:
-		return requeueResult, err
-	case errors.IsNotFound(err):
-		store, err = r.createStoreResource(ctx, req, openFgaService, authorizationRequest, &logger)
-		if err != nil {
-			return requeueResult, err
-		}
-	}
-	openFgaService.SetStoreId(store.Spec.Id)
 
-	authorizationModel := &extensionsv1.AuthorizationModel{}
-	err = r.Get(ctx, req.NamespacedName, authorizationModel)
-	switch {
-	case client.IgnoreNotFound(err) != nil:
+	store, err := r.getStore(ctx, req, openFgaService, authorizationRequest, &logger)
+	if err != nil {
 		return requeueResult, err
-	case errors.IsNotFound(err):
-		authorizationModel, err = r.createAuthorizationModel(ctx, req, openFgaService, authorizationRequest, &logger)
-		if err != nil {
-			return requeueResult, err
-		}
 	}
-	if err = openFgaService.SetAuthorizationModelId(authorizationModel.Spec.Instance.Id); err != nil {
+
+	authorizationModel, err := r.getAuthorizationModel(ctx, req, openFgaService, authorizationRequest, &logger)
+	if err != nil {
 		return requeueResult, err
 	}
 
@@ -243,6 +226,30 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	return nil
 }
 
+func (r *AuthorizationModelRequestReconciler) getAuthorizationModel(
+	ctx context.Context,
+	req ctrl.Request,
+	openFgaService openfgaInternal.PermissionService,
+	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
+	log *logr.Logger) (*extensionsv1.AuthorizationModel, error) {
+
+	authorizationModel := &extensionsv1.AuthorizationModel{}
+	err := r.Get(ctx, req.NamespacedName, authorizationModel)
+	switch {
+	case client.IgnoreNotFound(err) != nil:
+		return nil, err
+	case errors.IsNotFound(err):
+		authorizationModel, err = r.createAuthorizationModel(ctx, req, openFgaService, authorizationModelRequest, log)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err = openFgaService.SetAuthorizationModelId(authorizationModel.Spec.Instance.Id); err != nil {
+		return nil, err
+	}
+	return authorizationModel, nil
+}
+
 func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 	ctx context.Context,
 	req ctrl.Request,
@@ -267,6 +274,28 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 	log.V(0).Info("Created authorization model in Kubernetes", "authorizationModel", authorizationModel)
 
 	return &authorizationModel, nil
+}
+
+func (r *AuthorizationModelRequestReconciler) getStore(
+	ctx context.Context,
+	req ctrl.Request,
+	openFgaService openfgaInternal.PermissionService,
+	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
+	log *logr.Logger) (*extensionsv1.Store, error) {
+
+	store := &extensionsv1.Store{}
+	err := r.Get(ctx, req.NamespacedName, store)
+	switch {
+	case client.IgnoreNotFound(err) != nil:
+		return nil, err
+	case errors.IsNotFound(err):
+		store, err = r.createStoreResource(ctx, req, openFgaService, authorizationModelRequest, log)
+		if err != nil {
+			return nil, err
+		}
+	}
+	openFgaService.SetStoreId(store.Spec.Id)
+	return store, nil
 }
 
 func (r *AuthorizationModelRequestReconciler) createStoreResource(
