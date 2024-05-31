@@ -19,30 +19,60 @@ package controller
 import (
 	"context"
 	"github.com/golang/mock/gomock"
-	"k8s.io/utils/clock"
-	openfgainternal "openfga-controller/internal/openfga"
-	"time"
-
+	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/clock"
 	extensionsv1 "openfga-controller/api/v1"
+	openfgainternal "openfga-controller/internal/openfga"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"time"
 )
+
+const model = `
+model
+  schema 1.1
+
+type user
+
+type document
+  relations
+    define foo: [user]
+    define reader: [user]
+    define writer: [user]
+    define owner: [user]
+`
+const version = "1.1.1"
+
+func createAuthorizationModelRequest(name, namespace string) extensionsv1.AuthorizationModelRequest {
+	return extensionsv1.AuthorizationModelRequest{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			UID:       types.UID(uuid.NewString()),
+		},
+		Spec: extensionsv1.AuthorizationModelRequestSpec{
+			Version:            version,
+			AuthorizationModel: model,
+		},
+	}
+}
 
 var _ = Describe("AuthorizationModelRequest Controller", func() {
 	Context("When reconciling a resource", func() {
+		logger := log.FromContext(context.Background())
 		const resourceName = "test-resource"
+		const namespaceName = "default"
 
 		ctx := context.Background()
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: namespaceName,
 		}
 		authorizationModelRequest := &extensionsv1.AuthorizationModelRequest{}
 
@@ -104,6 +134,35 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
 			// Example: If you expect a certain status condition after reconciliation, verify it here.
+		})
+
+		It("given existing store when create store resource then return existing", func() {
+			ctrl := gomock.NewController(GinkgoT())
+			defer ctrl.Finish()
+			mockFactory := openfgainternal.NewMockPermissionServiceFactory(ctrl)
+			mockService := openfgainternal.NewMockPermissionService(ctrl)
+			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(&openfgainternal.Store{
+				Id:        "foo",
+				Name:      resourceName,
+				CreatedAt: time.Now(),
+			}, nil)
+
+			controllerReconciler := &AuthorizationModelRequestReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				PermissionServiceFactory: mockFactory,
+				Clock:                    clock.RealClock{},
+			}
+
+			authRequest := createAuthorizationModelRequest(resourceName, namespaceName)
+
+			storeResource, err := controllerReconciler.createStoreResource(
+				context.Background(), reconcile.Request{NamespacedName: typeNamespacedName},
+				mockService, &authRequest, &logger)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(storeResource).NotTo(BeNil())
+			Expect(storeResource.Name).To(Equal(resourceName))
+			Expect(storeResource.Namespace).To(Equal(namespaceName))
 		})
 	})
 })
