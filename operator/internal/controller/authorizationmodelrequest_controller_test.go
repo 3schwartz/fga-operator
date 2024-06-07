@@ -65,6 +65,10 @@ func createAuthorizationModelRequest(name, namespace string) extensionsv1.Author
 	}
 }
 
+func createAuthorizationModel(name, namespace string) extensionsv1.AuthorizationModel {
+	return extensionsv1.NewAuthorizationModel(name, namespace, uuid.NewString(), version, model, time.Now())
+}
+
 var _ = Describe("AuthorizationModelRequest Controller", func() {
 	Context("When reconciling a resource", func() {
 		logger := log.FromContext(context.Background())
@@ -204,6 +208,22 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			var authModelInK8 extensionsv1.AuthorizationModel
 			Expect(k8sClient.Get(ctx, typeNamespacedName, &authModelInK8)).To(Succeed())
 			Expect(authModelInK8.Spec.Instance.Id).To(Equal(authModelId))
+		})
+
+		It("given no changes in auth model when update then do not changes", func() {
+			// Arrange
+			mockService := openfgainternal.NewMockPermissionService(ctrl)
+			mockService.EXPECT().
+				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
+				Times(0)
+			authRequest := createAuthorizationModelRequest(resourceName, namespaceName)
+			authModel := createAuthorizationModel(resourceName, namespaceName)
+
+			// Act
+			err := controllerReconciler.updateAuthorizationModel(ctx, mockService, &authRequest, &authModel, &logger)
+
+			// Assert
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })
