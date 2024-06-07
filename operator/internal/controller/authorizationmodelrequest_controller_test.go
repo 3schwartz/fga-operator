@@ -49,9 +49,22 @@ type document
     define writer: [user]
     define owner: [user]
 `
-const version = "1.1.1"
+const modelUpdated = `
+model
+  schema 1.1
 
-func createAuthorizationModelRequest(name, namespace string) extensionsv1.AuthorizationModelRequest {
+type user
+  relations
+    define owner: [user]
+
+type document
+  relations
+    define member: [user]
+`
+const version = "1.1.1"
+const versionUpdated = "1.1.2"
+
+func createAuthorizationModelRequestWithSpecs(name, namespace, version, model string) extensionsv1.AuthorizationModelRequest {
 	return extensionsv1.AuthorizationModelRequest{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -63,6 +76,10 @@ func createAuthorizationModelRequest(name, namespace string) extensionsv1.Author
 			AuthorizationModel: model,
 		},
 	}
+}
+
+func createAuthorizationModelRequest(name, namespace string) extensionsv1.AuthorizationModelRequest {
+	return createAuthorizationModelRequestWithSpecs(name, namespace, version, model)
 }
 
 func createAuthorizationModel(name, namespace string) extensionsv1.AuthorizationModel {
@@ -224,6 +241,38 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 
 			// Assert
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("given changes in auth model when update then do changes", func() {
+			// Arrange
+			authModel := createAuthorizationModel(resourceName, namespaceName)
+			Expect(k8sClient.Create(ctx, &authModel)).To(Succeed())
+			authModelRequest := createAuthorizationModelRequestWithSpecs(resourceName, namespaceName, versionUpdated, modelUpdated)
+			oldAuthModelId := authModel.Spec.Instance.Id
+			newAuthModelId := uuid.NewString()
+			mockService := openfgainternal.NewMockPermissionService(ctrl)
+			mockService.EXPECT().
+				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(newAuthModelId, nil)
+
+			Expect(len(authModel.Spec.LatestModels)).To(Equal(0))
+
+			// Act
+			err := controllerReconciler.updateAuthorizationModel(ctx, mockService, &authModelRequest, &authModel, &logger)
+
+			// Assert
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(authModel.Spec.LatestModels)).To(Equal(1))
+			Expect(authModel.Spec.LatestModels[0].Id).To(Equal(oldAuthModelId))
+			Expect(authModel.Spec.Instance.Id).To(Equal(newAuthModelId))
+			Expect(authModel.Spec.Instance.Version).To(Equal(versionUpdated))
+			Expect(authModel.Spec.AuthorizationModel).To(Equal(modelUpdated))
+			var authModelInK8 extensionsv1.AuthorizationModel
+			Expect(k8sClient.Get(ctx, typeNamespacedName, &authModelInK8)).To(Succeed())
+			Expect(authModelInK8.Spec.Instance.Id).To(Equal(newAuthModelId))
+			Expect(authModelInK8.Spec.Instance.Version).To(Equal(versionUpdated))
+			Expect(authModelInK8.Spec.AuthorizationModel).To(Equal(modelUpdated))
+			Expect(len(authModelInK8.Spec.LatestModels)).To(Equal(1))
 		})
 	})
 })
