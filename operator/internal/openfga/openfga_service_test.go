@@ -4,9 +4,25 @@ import (
 	"context"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	v1 "openfga-controller/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"testing"
 )
+
+const model = `
+model
+  schema 1.1
+
+type user
+
+type document
+  relations
+    define foo: [user]
+    define reader: [user]
+    define writer: [user]
+    define owner: [user]
+`
+const version = "1.1.1"
 
 var (
 	service OpenFgaService
@@ -63,5 +79,69 @@ func TestNegativeStoreIntegration(t *testing.T) {
 	}
 	if nonExistingStore != nil {
 		t.Fatalf("expected store %q to be non-existent, but it exists", nonExistingStoreName)
+	}
+}
+
+func TestCreateAuthorizationModelIntegration(t *testing.T) {
+	setupIntegrationTest(t)
+
+	// Seed a store first
+	storeName := uuid.NewString()
+	store, err := service.CreateStore(ctx, storeName, &logger)
+	if err != nil {
+		t.Fatalf("failed to seed store: %v", err)
+	}
+	service.SetStoreId(store.Id)
+
+	// Create an authorization model request
+	authorizationModelRequest := &v1.AuthorizationModelRequest{
+		Spec: v1.AuthorizationModelRequestSpec{
+			AuthorizationModel: model,
+			Version:            version,
+		},
+	}
+
+	// ACT: Create authorization model
+	modelID, err := service.CreateAuthorizationModel(ctx, authorizationModelRequest, &logger)
+	if err != nil {
+		t.Fatalf("failed to create authorization model: %v", err)
+	}
+
+	// ASSERT: Check if model ID is not empty
+	if modelID == "" {
+		t.Fatal("authorization model ID is empty")
+	}
+
+	// ACT and ASSERT: Check possible to set auth id
+	if err := service.SetAuthorizationModelId(modelID); err != nil {
+		t.Fatalf("failed to set authorization model id: %v", err)
+	}
+}
+
+func TestCreateAuthorizationModelIntegration_BadModel(t *testing.T) {
+	setupIntegrationTest(t)
+
+	// Seed a store first
+	storeName := uuid.NewString()
+	store, err := service.CreateStore(ctx, storeName, &logger)
+	if err != nil {
+		t.Fatalf("failed to seed store: %v", err)
+	}
+	service.SetStoreId(store.Id)
+
+	// Create an authorization model request with a bad model
+	authorizationModelRequest := &v1.AuthorizationModelRequest{
+		Spec: v1.AuthorizationModelRequestSpec{
+			AuthorizationModel: `{"bad": "authorization model"}`, // Invalid JSON
+			Version:            "v1",
+		},
+	}
+
+	// ACT: Attempt to create authorization model
+	_, err = service.CreateAuthorizationModel(ctx, authorizationModelRequest, &logger)
+
+	// ASSERT: Check if error is not nil
+	if err == nil {
+		t.Fatal("expected error when creating authorization model with bad model, but got nil")
 	}
 }
