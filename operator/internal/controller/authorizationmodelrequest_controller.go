@@ -267,7 +267,7 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 	if err := ctrl.SetControllerReference(authorizationModelRequest, &authorizationModel, r.Scheme); err != nil {
 		return nil, err
 	}
-	if err := r.Create(ctx, &authorizationModel); client.IgnoreAlreadyExists(err) != nil {
+	if err := r.Create(ctx, &authorizationModel); err != nil {
 		log.Error(err, fmt.Sprintf("Failed to authorization model %s", req.Name))
 		return nil, err
 	}

@@ -78,7 +78,6 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			Namespace: namespaceName,
 		}
 		request := reconcile.Request{NamespacedName: typeNamespacedName}
-		authorizationModelRequest := &extensionsv1.AuthorizationModelRequest{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind AuthorizationModelRequest")
@@ -91,26 +90,42 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				Clock:                    clock.RealClock{},
 			}
 
-			err := k8sClient.Get(ctx, typeNamespacedName, authorizationModelRequest)
-			if err != nil && errors.IsNotFound(err) {
-				resource := createAuthorizationModelRequest(resourceName, namespaceName)
-				Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
-			}
+			//err := k8sClient.Get(ctx, typeNamespacedName, authorizationModelRequest)
+			//if err != nil && errors.IsNotFound(err) {
+			//	resource := createAuthorizationModelRequest(resourceName, namespaceName)
+			//	Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
+			//}
 		})
 
 		AfterEach(func() {
 			defer ctrl.Finish()
 
-			resource := &extensionsv1.AuthorizationModelRequest{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance AuthorizationModelRequest")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			//resource := &extensionsv1.AuthorizationModelRequest{}
+			//err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			//Expect(err).NotTo(HaveOccurred())
+			//
+			//By("Cleanup the specific resource instance AuthorizationModelRequest")
+			//Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
+			// Arrange
+			authorizationModelRequest := &extensionsv1.AuthorizationModelRequest{}
+			err := k8sClient.Get(ctx, typeNamespacedName, authorizationModelRequest)
+			if err != nil && errors.IsNotFound(err) {
+				resource := createAuthorizationModelRequest(resourceName, namespaceName)
+				Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
+			}
+			defer func() {
+				resource := &extensionsv1.AuthorizationModelRequest{}
+				err := k8sClient.Get(ctx, typeNamespacedName, resource)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Cleanup the specific resource instance AuthorizationModelRequest")
+				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			}()
+
 			mockService := openfgainternal.NewMockPermissionService(ctrl)
 			store := openfgainternal.Store{
 				Id:        "foo",
@@ -128,7 +143,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				Return(authModelId, nil)
 			mockService.EXPECT().SetAuthorizationModelId(gomock.Any()).Return(nil)
 
-			_, err := controllerReconciler.Reconcile(ctx, request)
+			_, err = controllerReconciler.Reconcile(ctx, request)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -189,6 +204,9 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(authModel).NotTo(BeNil())
 			Expect(authModel.Spec.Instance.Id).To(Equal(authModelId))
+			var authModelInK8 extensionsv1.AuthorizationModel
+			Expect(k8sClient.Get(ctx, typeNamespacedName, &authModelInK8)).To(Succeed())
+			Expect(authModelInK8.Spec.Instance.Id).To(Equal(authModelId))
 		})
 	})
 })
