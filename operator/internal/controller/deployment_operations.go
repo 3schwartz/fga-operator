@@ -33,7 +33,7 @@ func updateStoreIdOnDeployments(
 func updateAuthorizationModelIdOnDeployment(
 	deployments appsV1.DeploymentList,
 	updates map[DeploymentIdentifier]appsV1.Deployment,
-	authorizationModel *extensionsv1.AuthorizationModel,
+	authorizationModel extensionsv1.AuthorizationModelInterface,
 	reconcileTimestamp time.Time,
 	log *logr.Logger,
 ) {
