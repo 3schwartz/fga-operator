@@ -236,6 +236,7 @@ func TestUpdateDeploymentEnvVar(t *testing.T) {
 func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 	reconcileTimestamp := time.Now()
 	reconcileTimestampFormatted := reconcileTimestamp.UTC().Format(time.RFC3339)
+	logger := log.FromContext(context.Background())
 
 	tests := []struct {
 		name               string
@@ -350,7 +351,7 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 			},
 		},
 	}
-	logger := log.FromContext(context.Background())
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			updateAuthorizationModelIdOnDeployment(tt.deployments, tt.updates, tt.authorizationModel, reconcileTimestamp, &logger)
