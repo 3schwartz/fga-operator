@@ -122,10 +122,6 @@ func NewAuthorizationModel(name, namespace, authModelId, version, authModel stri
 	}
 }
 
-type AuthorizationModelInterface interface {
-	GetVersionFromDeployment(deployment v1.Deployment) (AuthorizationModelInstance, error)
-}
-
 func (a *AuthorizationModel) GetVersionFromDeployment(deployment v1.Deployment) (AuthorizationModelInstance, error) {
 	version, ok := deployment.Labels[OpenFgaAuthModelVersionLabel]
 	if ok {

@@ -5,6 +5,7 @@ import (
 	appsV1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensionsv1 "openfga-controller/api/v1"
+	"openfga-controller/internal/interfaces"
 	"time"
 )
 
@@ -33,7 +34,7 @@ func updateStoreIdOnDeployments(
 func updateAuthorizationModelIdOnDeployment(
 	deployments appsV1.DeploymentList,
 	updates map[DeploymentIdentifier]appsV1.Deployment,
-	authorizationModel extensionsv1.AuthorizationModelInterface,
+	authorizationModel interfaces.AuthorizationModelInterface,
 	reconcileTimestamp time.Time,
 	log *logr.Logger,
 ) {
