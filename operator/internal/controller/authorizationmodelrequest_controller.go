@@ -112,6 +112,7 @@ func (r *AuthorizationModelRequestReconciler) updateDeployment(
 ) {
 	if err := r.Update(ctx, deployment); err != nil {
 		log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
+		return
 	}
 	log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
 }
