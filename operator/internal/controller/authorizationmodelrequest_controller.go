@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	appsV1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/clock"
@@ -60,6 +59,7 @@ type Clock interface {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
+	reconcileTimestamp := r.Now()
 
 	requeueResult := ctrl.Result{RequeueAfter: 45 * time.Second}
 
@@ -79,12 +79,12 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		return requeueResult, err
 	}
 
-	authorizationModel, err := r.getAuthorizationModel(ctx, req, openFgaService, authorizationRequest, &logger)
+	authorizationModel, err := r.getAuthorizationModel(ctx, req, openFgaService, authorizationRequest, reconcileTimestamp, &logger)
 	if err != nil {
 		return requeueResult, err
 	}
 
-	if err = r.updateAuthorizationModel(ctx, openFgaService, authorizationRequest, authorizationModel, &logger); err != nil {
+	if err = r.updateAuthorizationModel(ctx, openFgaService, authorizationRequest, authorizationModel, reconcileTimestamp, &logger); err != nil {
 		return requeueResult, err
 	}
 
@@ -94,91 +94,15 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		return requeueResult, err
 	}
 
-	updates := r.updateStoreIdOnDeployments(deployments, store)
+	updates := updateStoreIdOnDeployments(deployments, store, reconcileTimestamp)
 
-	r.updateAuthorizationModelIdOnDeployment(deployments, updates, authorizationModel, &logger)
+	updateAuthorizationModelIdOnDeployment(deployments, updates, authorizationModel, reconcileTimestamp, &logger)
 
 	for _, deployment := range updates {
 		r.updateDeployment(ctx, &deployment, &logger)
 	}
 
 	return requeueResult, nil
-}
-
-type DeploymentIdentifier struct {
-	namespace string
-	name      string
-}
-
-func (r *AuthorizationModelRequestReconciler) updateAuthorizationModelIdOnDeployment(
-	deployments appsV1.DeploymentList,
-	updates map[DeploymentIdentifier]appsV1.Deployment,
-	authorizationModel *extensionsv1.AuthorizationModel,
-	log *logr.Logger,
-) {
-	for _, deployment := range deployments.Items {
-		authInstance, err := authorizationModel.GetVersionFromDeployment(deployment)
-		if err != nil {
-			log.Error(err, "unable to get auth instance from deployment", "deploymentName", deployment.Name)
-			continue
-		}
-		deploymentIdentifier := DeploymentIdentifier{namespace: deployment.Namespace, name: deployment.Name}
-		if updatedDeployment, ok := updates[deploymentIdentifier]; ok {
-			deployment = updatedDeployment
-		}
-		if !updateDeploymentEnvVar(&deployment, extensionsv1.OpenFgaAuthModelIdEnv, authInstance.Id) {
-			log.V(1).Info("deployment had correct auth id", "authInstance", authInstance)
-			continue
-		}
-
-		deployment.Annotations[extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation] = r.Now().UTC().Format(time.RFC3339)
-		deployment.Annotations[extensionsv1.OpenFgaAuthModelVersionLabel] = authInstance.Version
-
-		updates[deploymentIdentifier] = deployment
-	}
-}
-
-func (r *AuthorizationModelRequestReconciler) updateStoreIdOnDeployments(
-	deployments appsV1.DeploymentList,
-	store *extensionsv1.Store,
-) map[DeploymentIdentifier]appsV1.Deployment {
-	updates := map[DeploymentIdentifier]appsV1.Deployment{}
-	for _, deployment := range deployments.Items {
-		if updateDeploymentEnvVar(&deployment, extensionsv1.OpenFgaStoreIdEnv, store.Spec.Id) {
-			deployment.Annotations[extensionsv1.OpenFgaStoreIdUpdatedAtAnnotation] = r.Now().UTC().Format(time.RFC3339)
-
-			updates[DeploymentIdentifier{namespace: deployment.Namespace, name: deployment.Name}] = deployment
-		}
-	}
-
-	return updates
-}
-
-func updateDeploymentEnvVar(deployment *appsV1.Deployment, envVarName, envVarValue string) bool {
-	updated := false
-	for i := range deployment.Spec.Template.Spec.Containers {
-		container := &deployment.Spec.Template.Spec.Containers[i]
-		hasEnv := false
-		for j := range container.Env {
-			env := &container.Env[j]
-			if env.Name != envVarName {
-				continue
-			}
-			hasEnv = true
-			if env.Value != envVarValue {
-				updated = true
-				env.Value = envVarValue
-			}
-			break
-		}
-		if hasEnv {
-			continue
-		}
-		container.Env = append(container.Env, corev1.EnvVar{Name: envVarName, Value: envVarValue})
-		updated = true
-	}
-
-	return updated
 }
 
 func (r *AuthorizationModelRequestReconciler) updateDeployment(
@@ -197,6 +121,7 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	openFgaService openfgaInternal.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	authorizationModel *extensionsv1.AuthorizationModel,
+	reconcileTimestamp time.Time,
 	log *logr.Logger) error {
 
 	if authorizationModelRequest.Spec.Version == authorizationModel.Spec.Instance.Version &&
@@ -214,7 +139,7 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	authorizationModel.Spec.Instance = extensionsv1.AuthorizationModelInstance{
 		Id:        authModelId,
 		Version:   authorizationModelRequest.Spec.Version,
-		CreatedAt: &metav1.Time{Time: r.Now()},
+		CreatedAt: &metav1.Time{Time: reconcileTimestamp},
 	}
 	if err = r.Update(ctx, authorizationModel); err != nil {
 		log.Error(err, "unable to update authorization model in Kubernetes", "authorizationModel", authorizationModel)
@@ -231,6 +156,7 @@ func (r *AuthorizationModelRequestReconciler) getAuthorizationModel(
 	req ctrl.Request,
 	openFgaService openfgaInternal.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
+	reconcileTimestamp time.Time,
 	log *logr.Logger) (*extensionsv1.AuthorizationModel, error) {
 
 	authorizationModel := &extensionsv1.AuthorizationModel{}
@@ -239,7 +165,7 @@ func (r *AuthorizationModelRequestReconciler) getAuthorizationModel(
 	case client.IgnoreNotFound(err) != nil:
 		return nil, err
 	case errors.IsNotFound(err):
-		authorizationModel, err = r.createAuthorizationModel(ctx, req, openFgaService, authorizationModelRequest, log)
+		authorizationModel, err = r.createAuthorizationModel(ctx, req, openFgaService, authorizationModelRequest, reconcileTimestamp, log)
 		if err != nil {
 			return nil, err
 		}
@@ -255,6 +181,7 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 	req ctrl.Request,
 	openFgaService openfgaInternal.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
+	reconcileTimestamp time.Time,
 	log *logr.Logger) (*extensionsv1.AuthorizationModel, error) {
 
 	authModelId, err := openFgaService.CreateAuthorizationModel(ctx, authorizationModelRequest, log)
@@ -262,7 +189,7 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 		return nil, err
 	}
 
-	authorizationModel := extensionsv1.NewAuthorizationModel(req.Name, req.Namespace, authModelId, authorizationModelRequest.Spec.Version, authorizationModelRequest.Spec.AuthorizationModel, r.Now())
+	authorizationModel := extensionsv1.NewAuthorizationModel(req.Name, req.Namespace, authModelId, authorizationModelRequest.Spec.Version, authorizationModelRequest.Spec.AuthorizationModel, reconcileTimestamp)
 
 	if err := ctrl.SetControllerReference(authorizationModelRequest, &authorizationModel, r.Scheme); err != nil {
 		return nil, err

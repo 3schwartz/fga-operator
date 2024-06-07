@@ -216,7 +216,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			authRequest := createAuthorizationModelRequest(resourceName, namespaceName)
 
 			// Act
-			authModel, err := controllerReconciler.createAuthorizationModel(ctx, request, mockService, &authRequest, &logger)
+			authModel, err := controllerReconciler.createAuthorizationModel(ctx, request, mockService, &authRequest, time.Now(), &logger)
 
 			// Assert
 			Expect(err).NotTo(HaveOccurred())
@@ -237,7 +237,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			authModel := createAuthorizationModel(resourceName, namespaceName)
 
 			// Act
-			err := controllerReconciler.updateAuthorizationModel(ctx, mockService, &authRequest, &authModel, &logger)
+			err := controllerReconciler.updateAuthorizationModel(ctx, mockService, &authRequest, &authModel, time.Now(), &logger)
 
 			// Assert
 			Expect(err).NotTo(HaveOccurred())
@@ -258,7 +258,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			Expect(len(authModel.Spec.LatestModels)).To(Equal(0))
 
 			// Act
-			err := controllerReconciler.updateAuthorizationModel(ctx, mockService, &authModelRequest, &authModel, &logger)
+			err := controllerReconciler.updateAuthorizationModel(ctx, mockService, &authModelRequest, &authModel, time.Now(), &logger)
 
 			// Assert
 			Expect(err).NotTo(HaveOccurred())
