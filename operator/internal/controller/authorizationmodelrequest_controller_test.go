@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
@@ -28,6 +29,8 @@ import (
 	"k8s.io/utils/clock"
 	extensionsv1 "openfga-controller/api/v1"
 	openfgainternal "openfga-controller/internal/openfga"
+	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"time"
@@ -89,25 +92,27 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				PermissionServiceFactory: mockFactory,
 				Clock:                    clock.RealClock{},
 			}
-
-			//err := k8sClient.Get(ctx, typeNamespacedName, authorizationModelRequest)
-			//if err != nil && errors.IsNotFound(err) {
-			//	resource := createAuthorizationModelRequest(resourceName, namespaceName)
-			//	Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
-			//}
 		})
+
+		deleteResource := func(resource client.Object) {
+			err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(client.IgnoreNotFound(err)).NotTo(HaveOccurred())
+			if errors.IsNotFound(err) {
+				return
+			}
+			resourceType := reflect.TypeOf(resource).Elem().Name()
+			By(fmt.Sprintf("Cleanup the specific resource instance %s", resourceType))
+			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+		}
 
 		AfterEach(func() {
 			defer ctrl.Finish()
 
-			//resource := &extensionsv1.AuthorizationModelRequest{}
-			//err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			//Expect(err).NotTo(HaveOccurred())
-			//
-			//By("Cleanup the specific resource instance AuthorizationModelRequest")
-			//Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-
+			deleteResource(&extensionsv1.AuthorizationModelRequest{})
+			deleteResource(&extensionsv1.AuthorizationModel{})
+			deleteResource(&extensionsv1.Store{})
 		})
+
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			// Arrange
@@ -117,14 +122,6 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				resource := createAuthorizationModelRequest(resourceName, namespaceName)
 				Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
 			}
-			defer func() {
-				resource := &extensionsv1.AuthorizationModelRequest{}
-				err := k8sClient.Get(ctx, typeNamespacedName, resource)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("Cleanup the specific resource instance AuthorizationModelRequest")
-				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-			}()
 
 			mockService := openfgainternal.NewMockPermissionService(ctrl)
 			store := openfgainternal.Store{
