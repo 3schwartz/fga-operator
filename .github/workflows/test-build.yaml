@@ -46,7 +46,7 @@ jobs:
 
   build:
     permissions:
-      content: read
+      contents: read
       packages: write
     runs-on: ubuntu-22.04
     needs:
