@@ -25,7 +25,7 @@ type document
 const version = "1.1.1"
 
 var (
-	service OpenFgaService
+	service PermissionService
 	ctx     context.Context
 	logger  logr.Logger
 )
@@ -33,7 +33,7 @@ var (
 func setupIntegrationTest(t *testing.T) {
 	var err error
 	service, err = newOpenFgaService(Config{
-		ApiUrl:   "http://localhost:8080",
+		ApiUrl:   "http://localhost:8089",
 		ApiToken: "foobar",
 	})
 	if err != nil {
