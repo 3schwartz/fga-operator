@@ -1,0 +1,128 @@
+name: Test and build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag for docker image'
+        required: true
+
+env:
+  IMAGE_TAG: ${{ inputs.tag || github.run_id }}
+
+  GITHUB_REGISTRY: ghcr.io
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '^1.22'
+
+      - name: Updating docker compose
+        run: |
+          sudo curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+
+      - name: Start OpenFGA
+        run: docker-compose -f hosting/docker-compose.yaml up --wait
+
+      - name: Run tests
+        working-directory: ./operator
+        run: make test
+
+  build:
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-22.04
+    # needs:
+    #   - test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4    
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GITHUB_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        working-directory: ./operator
+        run: make docker-build docker-push IMG=${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
+
+  scan-image:
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+    runs-on: ubuntu-22.04
+    needs:
+      - build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GITHUB_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker pull
+        run: |
+          docker pull ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
+
+      - name: Run Snyk to check Docker images for vulnerabilities
+        id: snyk_scan
+        uses: snyk/actions/docker@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
+          args: --file=./operator/Dockerfile --severity-threshold=high --sarif-file-output=snyk.sarif
+    
+    # # Doesn't work since can't enable in free private repo
+    # - name: Upload Snyk report as sarif
+    #   uses: github/codeql-action/upload-sarif@v3
+    #   with:
+    #     sarif_file: snyk.sarif
+
+  scan-repo:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/golang@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: ./operator --severity-threshold=high --sarif-file-output=snyk.sarif
+
+      # # Doesn't work since can't enable in free private repo
+      # - name: Upload result to GitHub Code Scanning
+      #   uses: github/codeql-action/upload-sarif@v2
+      #   with:
+      #     sarif_file: snyk.sarif
