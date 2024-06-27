@@ -1,4 +1,4 @@
-name: Test
+name: Test and build
 
 on:
   push:
@@ -8,6 +8,16 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag for docker image'
+        required: true
+
+env:
+  IMAGE_NAME: openfga-operator
+  IMAGE_TAG: ${{ inputs.tag || github.run_id }}
+
+  GITHUB_REGISTRY: ghcr.io
 
 jobs:
   test:
@@ -33,3 +43,26 @@ jobs:
       - name: Run tests
         working-directory: ./operator
         run: make test
+
+  build:
+    permissions:
+      content: read
+      packages: write
+    runs-on: ubuntu-22.04
+    needs:
+      - test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4    
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GITHUB_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        working-directory: ./operator
+        run: make docker-build docker-push IMG=${{ env.GITHUB_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
