@@ -119,7 +119,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --sarif-file-output=snyk.sarif
+          args: ./operator --severity-threshold=high --sarif-file-output=snyk.sarif
 
       # # Doesn't work since can't enable in free private repo
       # - name: Upload result to GitHub Code Scanning
