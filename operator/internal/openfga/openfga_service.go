@@ -32,7 +32,7 @@ type Store struct {
 
 type OpenFgaServiceFactory struct{}
 
-func (_ OpenFgaServiceFactory) GetService(config Config) (OpenFgaService, error) {
+func (_ OpenFgaServiceFactory) GetService(config Config) (PermissionService, error) {
 	return newOpenFgaService(config)
 }
 
@@ -40,7 +40,7 @@ type OpenFgaService struct {
 	client ofgaClient.OpenFgaClient
 }
 
-func newOpenFgaService(config Config) (OpenFgaService, error) {
+func newOpenFgaService(config Config) (PermissionService, error) {
 	client, err := ofgaClient.NewSdkClient(&ofgaClient.ClientConfiguration{
 		ApiUrl: config.ApiUrl,
 		Credentials: &credentials.Credentials{
@@ -51,9 +51,9 @@ func newOpenFgaService(config Config) (OpenFgaService, error) {
 		},
 	})
 	if err != nil {
-		return OpenFgaService{}, err
+		return &OpenFgaService{}, err
 	}
-	return OpenFgaService{
+	return &OpenFgaService{
 		*client,
 	}, nil
 }
