@@ -1,6 +1,19 @@
 # operator
 // TODO(user): Add simple overview of use/purpose
 
+## Run locally
+
+Start OpenFGA
+```
+cd hosting
+docker-compose up
+```
+
+Set env
+```
+OPENFGA_API_URL=http://localhost:8089;OPENFGA_API_TOKEN=foobar
+```
+
 ## Generate mocks
 ```
 mockgen -source=internal/openfga/openfga_service.go -destination=internal/openfga/mock_openfga_service.go -package openfga
