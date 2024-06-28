@@ -33,7 +33,7 @@ This request will:
 - Create a store with the same name in OpenFGA.
 - Create a Kubernetes resource `Store`.
 
-```
+```yaml
 apiVersion: extensions.openfga-controller/v1
 kind: Store
 metadata:
@@ -52,10 +52,11 @@ spec:
   id: 01J1CE2YAH98MKN2SZ8BJ0XYPZ
 
 ```
+
 - Create the authorization model in OpenFGA.
 - Save the authorization model ID in a Kubernetes resource `AuthorizationModel`.
 
-```
+```yaml
 apiVersion: extensions.openfga-controller/v1
 kind: AuthorizationModel
 metadata:
@@ -84,7 +85,8 @@ spec:
 ### 2. Deployment with Label
 
 Given a deployment with the label `openfga-store` set to the name of the authorization request:
-```
+
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -110,7 +112,7 @@ spec:
 
 The environment variable `OPENFGA_AUTH_MODEL_ID` will be set to the latest created authorization model ID from OpenFGA.
 
-````
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -149,7 +151,8 @@ spec:
 
 ### 3. Update the Authorization Model
 To update the authorization model, make a request like below. The important part is the change in the authorizationModel since this is what the controller compares.
-```
+
+```yaml
 apiVersion: extensions.openfga-controller/v1
 kind: AuthorizationModelRequest
 metadata:
@@ -173,7 +176,7 @@ spec:
 
 The controller will call OpenFGA and create the new authorization model. The controller will update the AuthorizationModel with the new reference and move the old instance to `latestModels`.
 
-```
+```yaml
 apiVersion: extensions.openfga-controller/v1
 kind: AuthorizationModel
 metadata:
@@ -201,9 +204,10 @@ spec:
     id: 01HYTGF0VHRM5ASHSBJJRQG87N
     version: 1.1.1
 ```
+
 The controller will update annotated deployments so that the example deployment will have its `OPENFGA_AUTH_MODEL_ID` environment variable updated.
 
-```
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -244,7 +248,7 @@ spec:
 
 To lock the `OPENFGA_AUTH_MODEL_ID` to a specific user-provided version, add the label `openfga-auth-model-version` and set it to the desired version.
 
-```
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -271,7 +275,7 @@ spec:
 
 By applying the above, the `OPENFGA_AUTH_MODEL_ID` will be set to the authorization model ID with version label `1.1.1`.
 
-```
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
