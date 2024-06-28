@@ -1,16 +1,14 @@
-# OpenFGA controller
+# OpenFGA Controller Documentation
 
+This documentation helps you deploy an authorization model and ensures your deployments stay in sync with the latest authorization model from OpenFGA. The OpenFGA controller automates the synchronization between your deployments and the authorization models.
 
-Help deploy autohorization model and have deployments use latest deployed authorization model.
+## Steps
 
-# Steps
+### 1. Create an Authorization Model
 
-## Make a model
+Make an authorization request:
 
-
-Make a authorization request 
-
-```
+```yaml
 apiVersion: extensions.openfga-controller/v1
 kind: AuthorizationModelRequest
 metadata:
@@ -31,7 +29,10 @@ spec:
         define owner: [user]
 ```
 
-It will create a store with the same name in OpenFGA and make Kubernetes resource `Store`.
+This request will:
+- Create a store with the same name in OpenFGA.
+- Create a Kubernetes resource `Store`.
+
 ```
 apiVersion: extensions.openfga-controller/v1
 kind: Store
@@ -49,10 +50,11 @@ metadata:
     uid: <SOME_ID>
 spec:
   id: 01J1CE2YAH98MKN2SZ8BJ0XYPZ
-```
 
-It will also create the authorization model in OpenFGA and save the authorization model id in a Kubernetes resource `AuthorizationModel` which acts
-as a reference between the authroization model id in OpenFGA and the user provided name and version.
+```
+- Create the authorization model in OpenFGA.
+- Save the authorization model ID in a Kubernetes resource `AuthorizationModel`.
+
 ```
 apiVersion: extensions.openfga-controller/v1
 kind: AuthorizationModel
@@ -79,7 +81,9 @@ spec:
   latestModels: []
 ```
 
-Given a deployment with label `openfga-store` with value same as name of the request like below
+### 2. Deployment with Label
+
+Given a deployment with the label `openfga-store` set to the name of the authorization request:
 ```
 apiVersion: apps/v1
 kind: Deployment
@@ -104,8 +108,9 @@ spec:
         command: ["sleep", "9999999"]
 ```
 
-Then ´OPENFGA_AUTH_MODEL_ID´ environemnt variable will be set to latest created authorization model id from OpenFGA. It will get environment variables updated as below
-```
+The environment variable `OPENFGA_AUTH_MODEL_ID` will be set to the latest created authorization model ID from OpenFGA.
+
+````
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -140,11 +145,10 @@ spec:
         image: curlimages/curl:8.7.1
         imagePullPolicy: IfNotPresent
         name: main
-```
+````
 
-## Updating model
-
-Now update the authorization model by making a request like below. The important part is change of the `authorizationModel` since this is the part which is compared in the controller.
+### 3. Update the Authorization Model
+To update the authorization model, make a request like below. The important part is the change in the authorizationModel since this is what the controller compares.
 ```
 apiVersion: extensions.openfga-controller/v1
 kind: AuthorizationModelRequest
@@ -167,8 +171,8 @@ spec:
         define owner: [user]
 ```
 
-The controller will call OpenFGA and create the new authorization model. The controller will update the `AuthorizationModel` with the new reference.
-It will move the old instance to `latestModels`.
+The controller will call OpenFGA and create the new authorization model. The controller will update the AuthorizationModel with the new reference and move the old instance to `latestModels`.
+
 ```
 apiVersion: extensions.openfga-controller/v1
 kind: AuthorizationModel
@@ -197,8 +201,8 @@ spec:
     id: 01HYTGF0VHRM5ASHSBJJRQG87N
     version: 1.1.1
 ```
+The controller will update annotated deployments so that the example deployment will have its `OPENFGA_AUTH_MODEL_ID` environment variable updated.
 
-The controller will update annotated deployments such that the example deployment will get it's `OPENFGA_AUTH_MODEL_ID` environment variable updated.
 ```
 apiVersion: apps/v1
 kind: Deployment
@@ -232,12 +236,13 @@ spec:
         - name: OPENFGA_AUTH_MODEL_ID
           value: 01J1CFK2XZMFYW3QP1GKH2R4KN
         image: curlimages/curl:8.7.1
+        imagePullPolicy: IfNotPresent
         name: main
 ```
 
-## Set specific version on deployment
+### 4. Set a Specific Version on Deployment
 
-Let's say you want to lock the `OPENFGA_AUTH_MODEL_ID` to a specific user provided version. Then add label `openfga-auth-model-version` and set it to the version desired.
+To lock the `OPENFGA_AUTH_MODEL_ID` to a specific user-provided version, add the label `openfga-auth-model-version` and set it to the desired version.
 
 ```
 apiVersion: apps/v1
@@ -264,7 +269,7 @@ spec:
         command: ["sleep", "9999999"]
 ```
 
-By applying above we see that `OPENFGA_AUTH_MODEL_ID` is changed to the authorization model id with version label `1.1.1`.
+By applying the above, the `OPENFGA_AUTH_MODEL_ID` will be set to the authorization model ID with version label `1.1.1`.
 
 ```
 apiVersion: apps/v1
