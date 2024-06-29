@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: operator-store-editor-role
+  name: {{ include "openfga-operator.fullname" . }}-store-editor-role
   labels:
   {{- include "openfga-operator.labels" . | nindent 4 }}
 rules:

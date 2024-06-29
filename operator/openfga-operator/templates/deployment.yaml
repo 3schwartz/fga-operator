@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: operator-controller-manager
+  name: {{ include "openfga-operator.fullname" . }}-controller-manager
   labels:
     control-plane: controller-manager
   {{- include "openfga-operator.labels" . | nindent 4 }}
@@ -47,5 +47,5 @@ spec:
           | nindent 10 }}
       securityContext:
         runAsNonRoot: true
-      serviceAccountName: operator-controller-manager
+      serviceAccountName: {{ include "openfga-operator.fullname" . }}-controller-manager
       terminationGracePeriodSeconds: 10
