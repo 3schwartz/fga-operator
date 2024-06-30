@@ -25,7 +25,7 @@ controllerManager:
   # extraEnvVars: []
   extraEnvVars:
     - name: OPENFGA_API_URL
-      value: openfga-openfga.default.svc.cluster.local:8080
+      value: 'http://openfga.default.svc.cluster.local:8080'
     - name: OPENFGA_API_TOKEN
       value: foobar
     
