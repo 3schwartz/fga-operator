@@ -1,0 +1,56 @@
+# Configuration for the OpenFGA Operator Controller Manager
+controllerManager:
+  # URL of the OpenFGA API
+  openFgaUrl: 'http://openfga.default.svc.cluster.local:8080'
+  # API token for accessing the OpenFGA API using preshared keys.
+  openFgaApiToken: foobar
+  
+  manager:
+    # Arguments to pass to the controller manager
+    args:
+    - --leader-elect
+    - --health-probe-bind-address=:8081
+    - --metrics-bind-address=0
+    
+    # Security context for the controller manager container
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+        
+    # Image configuration for the controller manager
+    image:
+      repository: ghcr.io/3schwartz/openfga-operator
+      tag: 9714871740
+      
+    # Resource requests and limits for the controller manager container
+    resources:
+      limits:
+        cpu: 500m
+        memory: 128Mi
+      requests:
+        cpu: 10m
+        memory: 64Mi
+        
+  # Number of replicas for the controller manager
+  replicas: 1
+  
+  # Service account configuration for the controller manager
+  serviceAccount:
+    annotations: {}
+    
+  # Additional environment variables for the controller manager container
+  extraEnvVars: []
+
+# Kubernetes cluster domain
+kubernetesClusterDomain: cluster.local
+
+# Metrics service configuration
+metricsService:
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  type: ClusterIP

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: openfga-operator
+description: |
+  A Helm chart for deploying the OpenFGA Operator on Kubernetes. 
+  The OpenFGA Operator manages and automates the deployment, 
+  scaling, and maintenance of OpenFGA instances.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

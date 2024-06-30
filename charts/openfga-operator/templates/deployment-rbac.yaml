@@ -1,0 +1,21 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "openfga-operator.fullname" . }}-deployment-clusterrole
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["list", "watch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "openfga-operator.fullname" . }}-deployment-clusterrolebinding
+subjects:
+- kind: ServiceAccount
+  name: {{ include "openfga-operator.fullname" . }}-controller-manager
+  namespace: '{{ .Release.Namespace }}'
+roleRef:
+  kind: ClusterRole
+  name: {{ include "openfga-operator.fullname" . }}-deployment-clusterrole
+  apiGroup: rbac.authorization.k8s.io
