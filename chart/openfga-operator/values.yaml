@@ -10,7 +10,7 @@ controllerManager:
         drop:
         - ALL
     image:
-      repository: controller
+      repository: k3d-registry.localhost:12345/openfga-operator
       tag: latest
     resources:
       limits:
@@ -22,6 +22,13 @@ controllerManager:
   replicas: 1
   serviceAccount:
     annotations: {}
+  # extraEnvVars: []
+  extraEnvVars:
+    - name: OPENFGA_API_URL
+      value: openfga-openfga.default.svc.cluster.local:8080
+    - name: OPENFGA_API_TOKEN
+      value: foobar
+    
 kubernetesClusterDomain: cluster.local
 metricsService:
   ports:

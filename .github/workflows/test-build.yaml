@@ -15,7 +15,6 @@ on:
 
 env:
   IMAGE_TAG: ${{ inputs.tag || github.run_id }}
-
   GITHUB_REGISTRY: ghcr.io
 
 jobs:
