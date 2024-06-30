@@ -1,4 +1,6 @@
 controllerManager:
+  openFgaUrl: 'http://openfga.default.svc.cluster.local:8080'
+  openFgaApiToken: foobar
   manager:
     args:
     - --leader-elect
@@ -22,12 +24,7 @@ controllerManager:
   replicas: 1
   serviceAccount:
     annotations: {}
-  # extraEnvVars: []
-  extraEnvVars:
-    - name: OPENFGA_API_URL
-      value: 'http://openfga.default.svc.cluster.local:8080'
-    - name: OPENFGA_API_TOKEN
-      value: foobar
+  extraEnvVars: []
     
 kubernetesClusterDomain: cluster.local
 metricsService:

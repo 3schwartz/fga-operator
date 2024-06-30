@@ -15,6 +15,7 @@ spec:
       
     type document
       relations
+        define a: [user]
         define bar: [user]
         define reader: [user]
         define writer: [user]
