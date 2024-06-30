@@ -12,8 +12,8 @@ controllerManager:
         drop:
         - ALL
     image:
-      repository: k3d-registry.localhost:12345/openfga-operator
-      tag: latest
+      repository: ghcr.io/3schwartz/openfga-operator
+      tag: 9714871740
     resources:
       limits:
         cpu: 500m
