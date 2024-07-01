@@ -22,7 +22,7 @@ controllerManager:
     # Image configuration for the controller manager
     image:
       repository: ghcr.io/3schwartz/openfga-operator
-      tag: ${{ github.run_id }}
+      tag: 9739621055
       
     # Resource requests and limits for the controller manager container
     resources:
