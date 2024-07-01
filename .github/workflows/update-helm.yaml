@@ -24,11 +24,11 @@ jobs:
 
       - name: Update values.yaml
         run: |
-          sed -i '' 's/tag: .*/tag: ${{ github.run_id }}/' charts/openfga-operator/values.yaml
+          sed -i 's/tag: .*/tag: ${{ github.run_id }}/' charts/openfga-operator/values.yaml
 
       - name: Update Chart.yaml version
         run: |
-          sed -i '' -E 's/(version: [0-9]+\.[0-9]+\.[0-9]+).*/\1-${{ github.run_id }}/' charts/openfga-operator/Chart.yaml
+          sed -i -E 's/(version: [0-9]+\.[0-9]+\.[0-9]+).*/\1-${{ github.run_id }}/' charts/openfga-operator/Chart.yaml
 
       - name: Commit updated files
         run: |

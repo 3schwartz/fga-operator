@@ -1,20 +1,20 @@
 name: Test and build
 
-on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - 'charts/openfga-operator/values.yaml'
-      - 'charts/openfga-operator/Chart.yaml'      
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag for docker image'
-        required: true
+# on:
+#   push:
+#     branches:
+#       - main
+#     paths-ignore:
+#       - 'charts/openfga-operator/values.yaml'
+#       - 'charts/openfga-operator/Chart.yaml'      
+#   pull_request:
+#     branches:
+#       - main
+#   workflow_dispatch:
+#     inputs:
+#       tag:
+#         description: 'Tag for docker image'
+#         required: true
 
 env:
   IMAGE_TAG: ${{ inputs.tag || github.run_id }}
