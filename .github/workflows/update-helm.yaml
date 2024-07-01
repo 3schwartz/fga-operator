@@ -10,9 +10,9 @@ on:
   pull_request:
     branches:
       - main
-    # paths-ignore:
-    #   - 'charts/openfga-operator/values.yaml'
-    #   - 'charts/openfga-operator/Chart.yaml'
+
+env:
+ BRANCH: ${{ github.head_ref || github.ref_name }}
 
 jobs:
   update-helm:
@@ -31,12 +31,10 @@ jobs:
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
       
-      - name: Pull latest changes
-        env:
-          BRANCH: ${{ github.head_ref || github.ref_name }}
-        run: |
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git pull origin ${{ env.BRANCH }}
+      # - name: Pull latest changes
+      #   run: |
+      #     git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+      #     git pull origin ${{ env.BRANCH }}
 
       - name: Update values.yaml
         run: |
@@ -52,7 +50,5 @@ jobs:
           git commit -m "Update controllerManager.image.tag and chart version to ${{ github.run_id }}"
 
       - name: Push changes
-        env:
-          BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           git push origin HEAD:${{ env.BRANCH }}
