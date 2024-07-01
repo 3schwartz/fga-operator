@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'charts/openfga-operator/values.yaml'
+      - 'charts/openfga-operator/Chart.yaml'      
   pull_request:
     branches:
       - main

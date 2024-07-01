@@ -5,5 +5,5 @@ description: |
   The OpenFGA Operator manages and automates the deployment, 
   scaling, and maintenance of OpenFGA instances.
 type: application
-version: 0.1.0
+version: 0.1.0-${{ github.run_id }}
 appVersion: "0.1.0"

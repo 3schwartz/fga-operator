@@ -1,0 +1,44 @@
+name: Update Helm Chart
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'charts/openfga-operator/values.yaml'
+      - 'charts/openfga-operator/Chart.yaml'
+  pull_request:
+    branches:
+      - main
+    # paths-ignore:
+    #   - 'charts/openfga-operator/values.yaml'
+    #   - 'charts/openfga-operator/Chart.yaml'
+
+jobs:
+  update-helm:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update values.yaml
+        run: |
+          sed -i '' 's/tag: .*/tag: ${{ github.run_id }}/' charts/openfga-operator/values.yaml
+
+      - name: Update Chart.yaml version
+        run: |
+          sed -i '' -E 's/(version: [0-9]+\.[0-9]+\.[0-9]+).*/\1-${{ github.run_id }}/' charts/openfga-operator/Chart.yaml
+
+      - name: Commit updated files
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add charts/openfga-operator/values.yaml charts/openfga-operator/Chart.yaml
+          git commit -m "Update controllerManager.image.tag and chart version to ${{ github.run_id }}"
+
+      - name: Push changes
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          git push origin HEAD:${{ env.BRANCH }}
