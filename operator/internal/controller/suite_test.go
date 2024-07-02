@@ -148,7 +148,8 @@ func setupMockFactory() openfgainternal.PermissionServiceFactory {
 	mockService.EXPECT().SetStoreId(gomock.Any()).AnyTimes()
 	mockService.EXPECT().
 		CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(authModelId, nil)
+		Return(authModelId, nil).
+		AnyTimes()
 	mockService.EXPECT().SetAuthorizationModelId(gomock.Any()).Return(nil).AnyTimes()
 	return mockFactory
 }
