@@ -91,8 +91,6 @@ func createAuthorizationModel(name, namespace string) extensionsv1.Authorization
 var _ = Describe("AuthorizationModelRequest Controller", func() {
 	Context("When reconciling a resource", func() {
 		logger := log.FromContext(ctx)
-		const resourceName = "test-resource"
-		const namespaceName = "default"
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
@@ -126,23 +124,6 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				resource := createAuthorizationModelRequest(resourceName, namespaceName)
 				Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
 			}
-
-			mockService := openfgainternal.NewMockPermissionService(goMockController)
-			store := openfgainternal.Store{
-				Id:        "foo",
-				Name:      resourceName,
-				CreatedAt: time.Now(),
-			}
-			authModelId := "123"
-
-			mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil).AnyTimes()
-			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
-			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store, nil).AnyTimes()
-			mockService.EXPECT().SetStoreId(gomock.Any()).AnyTimes()
-			mockService.EXPECT().
-				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(authModelId, nil)
-			mockService.EXPECT().SetAuthorizationModelId(gomock.Any()).Return(nil).AnyTimes()
 
 			Eventually(func() error {
 				store := &extensionsv1.Store{}
