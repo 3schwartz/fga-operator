@@ -48,7 +48,7 @@ type Clock interface {
 	Now() time.Time
 }
 
-var deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
+const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
 
 //+kubebuilder:rbac:groups=extensions.openfga-controller,resources=authorizationmodelrequests,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=extensions.openfga-controller,resources=authorizationmodelrequests/status,verbs=get;update;patch
