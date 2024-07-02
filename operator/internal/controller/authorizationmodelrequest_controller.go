@@ -48,6 +48,8 @@ type Clock interface {
 	Now() time.Time
 }
 
+const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
+
 //+kubebuilder:rbac:groups=extensions.openfga-controller,resources=authorizationmodelrequests,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=extensions.openfga-controller,resources=authorizationmodelrequests/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=extensions.openfga-controller,resources=authorizationmodelrequests/finalizers,verbs=update
@@ -89,7 +91,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	}
 
 	var deployments appsV1.DeploymentList
-	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingLabels{extensionsv1.OpenFgaStoreLabel: store.Name}); err != nil {
+	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingFields{deploymentIndexKey: store.Name}); err != nil {
 		logger.Error(err, "unable to list deployments")
 		return requeueResult, err
 	}
@@ -263,7 +265,16 @@ func (r *AuthorizationModelRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 		r.Clock = clock.RealClock{}
 	}
 
-	// TODO: Create index on deployment
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &appsV1.Deployment{}, deploymentIndexKey, func(rawObj client.Object) []string {
+		deployment := rawObj.(*appsV1.Deployment)
+		labelValue, exists := deployment.Labels[extensionsv1.OpenFgaStoreLabel]
+		if !exists {
+			return nil
+		}
+		return []string{labelValue}
+	}); err != nil {
+		return err
+	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&extensionsv1.AuthorizationModelRequest{}).

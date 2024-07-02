@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"context"
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -26,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/clock"
 	extensionsv1 "openfga-controller/api/v1"
 	openfgainternal "openfga-controller/internal/openfga"
 	"reflect"
@@ -36,7 +34,8 @@ import (
 	"time"
 )
 
-const model = `
+const (
+	model = `
 model
   schema 1.1
 
@@ -49,7 +48,7 @@ type document
     define writer: [user]
     define owner: [user]
 `
-const modelUpdated = `
+	modelUpdated = `
 model
   schema 1.1
 
@@ -61,8 +60,11 @@ type document
   relations
     define member: [user]
 `
-const version = "1.1.1"
-const versionUpdated = "1.1.2"
+	version        = "1.1.1"
+	versionUpdated = "1.1.2"
+	duration       = time.Second * 3
+	interval       = time.Millisecond * 250
+)
 
 func createAuthorizationModelRequestWithSpecs(name, namespace, version, model string) extensionsv1.AuthorizationModelRequest {
 	return extensionsv1.AuthorizationModelRequest{
@@ -88,32 +90,13 @@ func createAuthorizationModel(name, namespace string) extensionsv1.Authorization
 
 var _ = Describe("AuthorizationModelRequest Controller", func() {
 	Context("When reconciling a resource", func() {
-		logger := log.FromContext(context.Background())
-		const resourceName = "test-resource"
-		const namespaceName = "default"
-		var ctrl *gomock.Controller
-		var mockFactory *openfgainternal.MockPermissionServiceFactory
-		var controllerReconciler *AuthorizationModelRequestReconciler
-
-		ctx := context.Background()
+		logger := log.FromContext(ctx)
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
 			Namespace: namespaceName,
 		}
 		request := reconcile.Request{NamespacedName: typeNamespacedName}
-
-		BeforeEach(func() {
-			By("creating the custom resource for the Kind AuthorizationModelRequest")
-			ctrl = gomock.NewController(GinkgoT())
-			mockFactory = openfgainternal.NewMockPermissionServiceFactory(ctrl)
-			controllerReconciler = &AuthorizationModelRequestReconciler{
-				Client:                   k8sClient,
-				Scheme:                   k8sClient.Scheme(),
-				PermissionServiceFactory: mockFactory,
-				Clock:                    clock.RealClock{},
-			}
-		})
 
 		deleteResource := func(resource client.Object) {
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
@@ -127,8 +110,6 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 		}
 
 		AfterEach(func() {
-			defer ctrl.Finish()
-
 			deleteResource(&extensionsv1.AuthorizationModelRequest{})
 			deleteResource(&extensionsv1.AuthorizationModel{})
 			deleteResource(&extensionsv1.Store{})
@@ -144,29 +125,14 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
 			}
 
-			mockService := openfgainternal.NewMockPermissionService(ctrl)
-			store := openfgainternal.Store{
-				Id:        "foo",
-				Name:      "bar",
-				CreatedAt: time.Now(),
-			}
-			authModelId := "123"
-
-			mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil)
-			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
-			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store, nil)
-			mockService.EXPECT().SetStoreId(gomock.Any())
-			mockService.EXPECT().
-				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(authModelId, nil)
-			mockService.EXPECT().SetAuthorizationModelId(gomock.Any()).Return(nil)
-
-			_, err = controllerReconciler.Reconcile(ctx, request)
-			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() error {
+				store := &extensionsv1.Store{}
+				return k8sClient.Get(ctx, typeNamespacedName, store)
+			}, duration, interval).Should(Succeed())
 		})
 
 		It("given existing store when create store resource then return existing", func() {
-			mockService := openfgainternal.NewMockPermissionService(ctrl)
+			mockService := openfgainternal.NewMockPermissionService(goMockController)
 			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(&openfgainternal.Store{
 				Id:        "foo",
 				Name:      resourceName,
@@ -186,7 +152,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 
 		It("given no existing store when create store resource then create new store", func() {
 			storeId := uuid.NewString()
-			mockService := openfgainternal.NewMockPermissionService(ctrl)
+			mockService := openfgainternal.NewMockPermissionService(goMockController)
 			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
 			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&openfgainternal.Store{
 				Id:        storeId,
@@ -209,7 +175,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 		It("when create authorization model then present in kubernetes", func() {
 			// Arrange
 			authModelId := uuid.NewString()
-			mockService := openfgainternal.NewMockPermissionService(ctrl)
+			mockService := openfgainternal.NewMockPermissionService(goMockController)
 			mockService.EXPECT().
 				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(authModelId, nil)
@@ -229,7 +195,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 
 		It("given no changes in auth model when update then do not changes", func() {
 			// Arrange
-			mockService := openfgainternal.NewMockPermissionService(ctrl)
+			mockService := openfgainternal.NewMockPermissionService(goMockController)
 			mockService.EXPECT().
 				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
 				Times(0)
@@ -250,7 +216,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			authModelRequest := createAuthorizationModelRequestWithSpecs(resourceName, namespaceName, versionUpdated, modelUpdated)
 			oldAuthModelId := authModel.Spec.Instance.Id
 			newAuthModelId := uuid.NewString()
-			mockService := openfgainternal.NewMockPermissionService(ctrl)
+			mockService := openfgainternal.NewMockPermissionService(goMockController)
 			mockService.EXPECT().
 				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(newAuthModelId, nil)

@@ -17,10 +17,16 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"fmt"
+	"github.com/golang/mock/gomock"
+	"k8s.io/utils/clock"
+	openfgainternal "openfga-controller/internal/openfga"
 	"path/filepath"
 	"runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -39,9 +45,20 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
+var (
+	cfg                  *rest.Config
+	k8sClient            client.Client
+	testEnv              *envtest.Environment
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	controllerReconciler *AuthorizationModelRequestReconciler
+	goMockController     *gomock.Controller
+)
+
+const (
+	resourceName  = "test-resource"
+	namespaceName = "default"
+)
 
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -81,10 +98,57 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
+	ctx, cancel = context.WithCancel(context.TODO())
+
+	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: scheme.Scheme,
+	})
+	Expect(err).ToNot(HaveOccurred())
+
+	goMockController = gomock.NewController(GinkgoT())
+
+	controllerReconciler = &AuthorizationModelRequestReconciler{
+		Client:                   k8sManager.GetClient(),
+		Scheme:                   k8sManager.GetScheme(),
+		PermissionServiceFactory: setupMockFactory(),
+		Clock:                    clock.RealClock{},
+	}
+
+	err = controllerReconciler.SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
+	go func() {
+		defer GinkgoRecover()
+		err = k8sManager.Start(ctx)
+		Expect(err).ToNot(HaveOccurred())
+	}()
 })
 
 var _ = AfterSuite(func() {
+	defer goMockController.Finish()
+	cancel()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
+
+func setupMockFactory() openfgainternal.PermissionServiceFactory {
+	mockFactory := openfgainternal.NewMockPermissionServiceFactory(goMockController)
+	mockService := openfgainternal.NewMockPermissionService(goMockController)
+	store := openfgainternal.Store{
+		Id:        "foo",
+		Name:      resourceName,
+		CreatedAt: time.Now(),
+	}
+	authModelId := "123"
+
+	mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil).AnyTimes()
+	mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store, nil).AnyTimes()
+	mockService.EXPECT().SetStoreId(gomock.Any()).AnyTimes()
+	mockService.EXPECT().
+		CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(authModelId, nil)
+	mockService.EXPECT().SetAuthorizationModelId(gomock.Any()).Return(nil).AnyTimes()
+	return mockFactory
+}
