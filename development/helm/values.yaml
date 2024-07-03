@@ -1,0 +1,28 @@
+openfga:
+  replicaCount: 1
+  datastore:
+    engine: postgres
+    uriSecret: openfga
+    # uri: postgres://postgres:password@openfga-postgresql.default.svc.cluster.local:5432/openfga?sslmode=disable
+  postgresql:
+    enabled: false
+    auth:
+      postgresPassword: password
+      database: postgres
+  ingress:
+    enabled: true
+    hosts:
+      - host: localhost
+        paths:
+          - path: /
+            pathType: Prefix
+  authn:
+    method: preshared
+  extraEnvVars:
+    - name: OPENFGA_AUTHN_PRESHARED_KEYS
+      value: foobar
+
+postgresql:
+  auth:
+    postgresPassword: password
+    database: openfga
