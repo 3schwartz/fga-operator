@@ -90,7 +90,7 @@ jobs:
 
       - name: Update values.yaml
         run: |
-          sed -i 's/tag: .*/tag: ${{ github.run_id }}/' charts/fga-operator/values.yaml
+          sed -i 's/tag: .*/tag: \"${{ github.run_id }}\"/' charts/fga-operator/values.yaml
 
       - name: Update Chart.yaml version
         run: |
