@@ -35,7 +35,7 @@ jobs:
       - name: Merge main into gh-pages
         run: |
           git checkout gh-pages
-          git merge main
+          git merge origin/main
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
