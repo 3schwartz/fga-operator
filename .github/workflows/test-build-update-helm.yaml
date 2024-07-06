@@ -39,7 +39,7 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
 
       - name: Start OpenFGA
-        run: docker-compose -f hosting/docker-compose.yaml up --wait
+        run: docker-compose -f development/docker-compose/docker-compose.yaml up --wait
 
       - name: Run tests
         working-directory: ./operator

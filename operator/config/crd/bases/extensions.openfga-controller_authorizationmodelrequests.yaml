@@ -41,10 +41,26 @@ spec:
             description: AuthorizationModelRequestSpec defines the desired state of
               AuthorizationModelRequest
             properties:
-              authorizationModel:
-                type: string
-              version:
-                type: string
+              instances:
+                items:
+                  properties:
+                    authorizationModel:
+                      type: string
+                    version:
+                      properties:
+                        major:
+                          type: integer
+                        minor:
+                          type: integer
+                        patch:
+                          type: integer
+                      required:
+                      - major
+                      - minor
+                      - patch
+                      type: object
+                  type: object
+                type: array
             type: object
           status:
             description: AuthorizationModelRequestStatus defines the observed state

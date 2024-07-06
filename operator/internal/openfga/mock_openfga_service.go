@@ -6,7 +6,6 @@ package openfga
 
 import (
 	context "context"
-	v1 "openfga-controller/api/v1"
 	reflect "reflect"
 
 	logr "github.com/go-logr/logr"
@@ -90,18 +89,18 @@ func (mr *MockPermissionServiceMockRecorder) CheckExistingStores(ctx, storeName 
 }
 
 // CreateAuthorizationModel mocks base method.
-func (m *MockPermissionService) CreateAuthorizationModel(ctx context.Context, authorizationModelRequest *v1.AuthorizationModelRequest, log *logr.Logger) (string, error) {
+func (m *MockPermissionService) CreateAuthorizationModel(ctx context.Context, authorizationModel string, log *logr.Logger) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateAuthorizationModel", ctx, authorizationModelRequest, log)
+	ret := m.ctrl.Call(m, "CreateAuthorizationModel", ctx, authorizationModel, log)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateAuthorizationModel indicates an expected call of CreateAuthorizationModel.
-func (mr *MockPermissionServiceMockRecorder) CreateAuthorizationModel(ctx, authorizationModelRequest, log interface{}) *gomock.Call {
+func (mr *MockPermissionServiceMockRecorder) CreateAuthorizationModel(ctx, authorizationModel, log interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAuthorizationModel", reflect.TypeOf((*MockPermissionService)(nil).CreateAuthorizationModel), ctx, authorizationModelRequest, log)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAuthorizationModel", reflect.TypeOf((*MockPermissionService)(nil).CreateAuthorizationModel), ctx, authorizationModel, log)
 }
 
 // CreateStore mocks base method.

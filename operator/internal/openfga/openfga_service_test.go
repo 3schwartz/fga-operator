@@ -22,12 +22,16 @@ type document
     define writer: [user]
     define owner: [user]
 `
-const version = "1.1.1"
 
 var (
 	service PermissionService
 	ctx     context.Context
 	logger  logr.Logger
+	version = v1.ModelVersion{
+		Major: 1,
+		Minor: 1,
+		Patch: 1,
+	}
 )
 
 func setupIntegrationTest(t *testing.T) {
@@ -44,22 +48,22 @@ func setupIntegrationTest(t *testing.T) {
 }
 
 func TestPositiveStoreIntegration(t *testing.T) {
+	// Arrange
 	setupIntegrationTest(t)
 	testStoreName := uuid.NewString()
 
-	// ACT: Create a test store
+	// Act
 	createdStore, err := service.CreateStore(ctx, testStoreName, &logger)
 	if err != nil {
 		t.Fatalf("failed to create test store: %v", err)
 	}
 
-	// ASSERT: Check if the test store exists
+	// Assert
 	existingStore, err := service.CheckExistingStores(ctx, testStoreName)
 	if err != nil {
 		t.Fatalf("failed to check existing stores: %v", err)
 	}
 
-	// Validate that the store returned by CheckExistingStores matches the one created
 	if existingStore == nil {
 		t.Fatalf("expected test store %q to exist, but it doesn't", testStoreName)
 	}
@@ -69,10 +73,11 @@ func TestPositiveStoreIntegration(t *testing.T) {
 }
 
 func TestNegativeStoreIntegration(t *testing.T) {
+	// Arrange
 	setupIntegrationTest(t)
 	nonExistingStoreName := "non-existing-store"
 
-	// ASSERT: Check behavior when store doesn't exist
+	// Assert
 	nonExistingStore, err := service.CheckExistingStores(ctx, nonExistingStoreName)
 	if err != nil {
 		t.Fatalf("failed to check existing stores: %v", err)
@@ -85,7 +90,7 @@ func TestNegativeStoreIntegration(t *testing.T) {
 func TestCreateAuthorizationModelIntegration(t *testing.T) {
 	setupIntegrationTest(t)
 
-	// Seed a store first
+	// Arrange
 	storeName := uuid.NewString()
 	store, err := service.CreateStore(ctx, storeName, &logger)
 	if err != nil {
@@ -93,26 +98,18 @@ func TestCreateAuthorizationModelIntegration(t *testing.T) {
 	}
 	service.SetStoreId(store.Id)
 
-	// Create an authorization model request
-	authorizationModelRequest := &v1.AuthorizationModelRequest{
-		Spec: v1.AuthorizationModelRequestSpec{
-			AuthorizationModel: model,
-			Version:            version,
-		},
-	}
-
-	// ACT: Create authorization model
-	modelID, err := service.CreateAuthorizationModel(ctx, authorizationModelRequest, &logger)
+	// Act
+	modelID, err := service.CreateAuthorizationModel(ctx, model, &logger)
 	if err != nil {
 		t.Fatalf("failed to create authorization model: %v", err)
 	}
 
-	// ASSERT: Check if model ID is not empty
+	// Assert
 	if modelID == "" {
 		t.Fatal("authorization model ID is empty")
 	}
 
-	// ACT and ASSERT: Check possible to set auth id
+	// Act & Assert
 	if err := service.SetAuthorizationModelId(modelID); err != nil {
 		t.Fatalf("failed to set authorization model id: %v", err)
 	}
@@ -121,26 +118,19 @@ func TestCreateAuthorizationModelIntegration(t *testing.T) {
 func TestCreateAuthorizationModelIntegration_BadModel(t *testing.T) {
 	setupIntegrationTest(t)
 
-	// Seed a store first
+	// Arrange
 	storeName := uuid.NewString()
 	store, err := service.CreateStore(ctx, storeName, &logger)
 	if err != nil {
 		t.Fatalf("failed to seed store: %v", err)
 	}
 	service.SetStoreId(store.Id)
+	authorizationModel := `{"bad": "authorization model"}`
 
-	// Create an authorization model request with a bad model
-	authorizationModelRequest := &v1.AuthorizationModelRequest{
-		Spec: v1.AuthorizationModelRequestSpec{
-			AuthorizationModel: `{"bad": "authorization model"}`, // Invalid JSON
-			Version:            "v1",
-		},
-	}
+	// Act
+	_, err = service.CreateAuthorizationModel(ctx, authorizationModel, &logger)
 
-	// ACT: Attempt to create authorization model
-	_, err = service.CreateAuthorizationModel(ctx, authorizationModelRequest, &logger)
-
-	// ASSERT: Check if error is not nil
+	// Assert
 	if err == nil {
 		t.Fatal("expected error when creating authorization model with bad model, but got nil")
 	}

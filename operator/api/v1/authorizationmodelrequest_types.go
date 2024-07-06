@@ -17,7 +17,10 @@ limitations under the License.
 package v1
 
 import (
+	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strconv"
+	"strings"
 )
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
@@ -26,8 +29,7 @@ import (
 type AuthorizationModelRequestSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
-	AuthorizationModel string `json:"authorizationModel,omitempty"`
-	Version            string `json:"version,omitempty"`
+	Instances []AuthorizationModelRequestInstance `json:"instances,omitempty"`
 }
 
 // AuthorizationModelRequestStatus defines the observed state of AuthorizationModelRequest
@@ -59,4 +61,47 @@ type AuthorizationModelRequestList struct {
 
 func init() {
 	SchemeBuilder.Register(&AuthorizationModelRequest{}, &AuthorizationModelRequestList{})
+}
+
+type ModelVersion struct {
+	Major int `json:"major"`
+	Minor int `json:"minor"`
+	Patch int `json:"patch"`
+}
+
+func ModelVersionFromString(version string) (ModelVersion, error) {
+	parts := strings.Split(version, ".")
+	if len(parts) != 3 {
+		return ModelVersion{}, fmt.Errorf("invalid version format: %s", version)
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return ModelVersion{}, fmt.Errorf("invalid major version: %s", parts[0])
+	}
+
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return ModelVersion{}, fmt.Errorf("invalid minor version: %s", parts[1])
+	}
+
+	patch, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return ModelVersion{}, fmt.Errorf("invalid patch version: %s", parts[2])
+	}
+
+	return ModelVersion{
+		Major: major,
+		Minor: minor,
+		Patch: patch,
+	}, nil
+}
+
+func (v ModelVersion) String() string {
+	return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
+}
+
+type AuthorizationModelRequestInstance struct {
+	AuthorizationModel string       `json:"authorizationModel,omitempty"`
+	Version            ModelVersion `json:"version,omitempty"`
 }
