@@ -27,11 +27,11 @@ import (
 const OpenFgaAuthModelIdEnv = "OPENFGA_AUTH_MODEL_ID"
 const OpenFgaStoreIdEnv = "OPENFGA_STORE_ID"
 
-const OpenFgaStoreLabel = "openfga-store"
-const OpenFgaAuthModelVersionLabel = "openfga-auth-model-version"
+const FgaStoreLabel = "fga-store"
+const FgaAuthModelVersionLabel = "fga-auth-model-version"
 
-const OpenFgaAuthIdUpdatedAtAnnotation = "openfga-auth-id-updated-at"
-const OpenFgaStoreIdUpdatedAtAnnotation = "openfga-store-id-updated-at"
+const FgaAuthIdUpdatedAtAnnotation = "fga-auth-id-updated-at"
+const FgaStoreIdUpdatedAtAnnotation = "fga-store-id-updated-at"
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -158,7 +158,7 @@ func (a *AuthorizationModel) GetVersionFromDeployment(deployment v1.Deployment) 
 	if len(a.Spec.Instances) == 0 {
 		return AuthorizationModelInstance{}, fmt.Errorf("no authorization model exists")
 	}
-	version, ok := deployment.Labels[OpenFgaAuthModelVersionLabel]
+	version, ok := deployment.Labels[FgaAuthModelVersionLabel]
 	if ok {
 		modelVersion, err := ModelVersionFromString(version)
 		if err != nil {

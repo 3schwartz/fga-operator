@@ -18,8 +18,8 @@ package main
 
 import (
 	"crypto/tls"
+	"fga-controller/internal/openfga"
 	"flag"
-	"openfga-controller/internal/openfga"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -29,15 +29,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	openfgaInternal "openfga-controller/internal/openfga"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	extensionsv1 "openfga-controller/api/v1"
-	"openfga-controller/internal/controller"
+	extensionsv1 "fga-controller/api/v1"
+	"fga-controller/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -106,7 +105,7 @@ func main() {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "c18cdd98.openfga-controller",
+		LeaderElectionID:       "c18cdd98.fga-controller",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -132,7 +131,7 @@ func main() {
 	if err = (&controller.AuthorizationModelRequestReconciler{
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
-		PermissionServiceFactory: openfgaInternal.OpenFgaServiceFactory{},
+		PermissionServiceFactory: openfga.OpenFgaServiceFactory{},
 		Config:                   config,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AuthorizationModelRequest")

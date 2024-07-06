@@ -17,6 +17,8 @@ limitations under the License.
 package controller
 
 import (
+	extensionsv1 "fga-controller/api/v1"
+	fgainternal "fga-controller/internal/openfga"
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -25,8 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	extensionsv1 "openfga-controller/api/v1"
-	openfgainternal "openfga-controller/internal/openfga"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -152,8 +152,8 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 		})
 
 		It("given existing store when create store resource then return existing", func() {
-			mockService := openfgainternal.NewMockPermissionService(goMockController)
-			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(&openfgainternal.Store{
+			mockService := fgainternal.NewMockPermissionService(goMockController)
+			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(&fgainternal.Store{
 				Id:        "foo",
 				Name:      resourceName,
 				CreatedAt: time.Now(),
@@ -172,9 +172,9 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 
 		It("given no existing store when create store resource then create new store", func() {
 			storeId := uuid.NewString()
-			mockService := openfgainternal.NewMockPermissionService(goMockController)
+			mockService := fgainternal.NewMockPermissionService(goMockController)
 			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
-			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&openfgainternal.Store{
+			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&fgainternal.Store{
 				Id:        storeId,
 				Name:      resourceName,
 				CreatedAt: time.Now(),
@@ -195,7 +195,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 		It("when create authorization model then present in kubernetes", func() {
 			// Arrange
 			authModelId := uuid.NewString()
-			mockService := openfgainternal.NewMockPermissionService(goMockController)
+			mockService := fgainternal.NewMockPermissionService(goMockController)
 			mockService.EXPECT().
 				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(authModelId, nil)
@@ -216,7 +216,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 
 		It("given no changes in auth model when update then do not changes", func() {
 			// Arrange
-			mockService := openfgainternal.NewMockPermissionService(goMockController)
+			mockService := fgainternal.NewMockPermissionService(goMockController)
 			mockService.EXPECT().
 				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
 				Times(0)
@@ -246,7 +246,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			Expect(k8sClient.Create(ctx, &authModel)).To(Succeed())
 			authModelRequest := createAuthorizationModelRequestWithSpecs(resourceName, namespaceName, requestInstances)
 			newAuthModelId := uuid.NewString()
-			mockService := openfgainternal.NewMockPermissionService(goMockController)
+			mockService := fgainternal.NewMockPermissionService(goMockController)
 			mockService.EXPECT().
 				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(newAuthModelId, nil)
@@ -285,7 +285,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			requestInstances := authorizationModelRequestInstancesFromSingle(modelUpdated, versionUpdated)
 			authModelRequest := createAuthorizationModelRequestWithSpecs(resourceName, namespaceName, requestInstances)
 			newAuthModelId := uuid.NewString()
-			mockService := openfgainternal.NewMockPermissionService(goMockController)
+			mockService := fgainternal.NewMockPermissionService(goMockController)
 			mockService.EXPECT().
 				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(newAuthModelId, nil)

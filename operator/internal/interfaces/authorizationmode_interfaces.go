@@ -1,8 +1,8 @@
 package interfaces
 
 import (
+	v12 "fga-controller/api/v1"
 	v1 "k8s.io/api/apps/v1"
-	v12 "openfga-controller/api/v1"
 )
 
 type AuthorizationModelInterface interface {

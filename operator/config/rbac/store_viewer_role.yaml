@@ -8,7 +8,7 @@ metadata:
   name: store-viewer-role
 rules:
 - apiGroups:
-  - extensions.openfga-controller
+  - extensions.fga-controller
   resources:
   - stores
   verbs:
@@ -16,7 +16,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - extensions.openfga-controller
+  - extensions.fga-controller
   resources:
   - stores/status
   verbs:
