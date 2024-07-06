@@ -29,6 +29,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Fetch all branches
+        run: git fetch origin
+
+      - name: Merge main into gh-pages
+        run: |
+          git checkout gh-pages
+          git merge main
+
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
         env:
