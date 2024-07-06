@@ -287,7 +287,7 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 					},
 					map[string]string{
 						extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation: reconcileTimestampFormatted,
-						extensionsv1.OpenFgaAuthModelVersionLabel:     "v1",
+						extensionsv1.OpenFgaAuthModelVersionLabel:     "1.2.3",
 					},
 				),
 			},
@@ -349,7 +349,7 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 					},
 					map[string]string{
 						extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation: reconcileTimestampFormatted,
-						extensionsv1.OpenFgaAuthModelVersionLabel:     "v1",
+						extensionsv1.OpenFgaAuthModelVersionLabel:     "1.2.3",
 					},
 				),
 			},
