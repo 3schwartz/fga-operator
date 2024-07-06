@@ -372,3 +372,38 @@ spec:
         imagePullPolicy: IfNotPresent
         name: main
 ```
+
+## Installation using Helm
+
+To install the Helm chart for fga-operator, follow the steps below:
+
+Add Helm Repository:
+
+```sh
+helm repo add fga-operator https://3schwartz.github.io/fga-operator/
+helm repo update
+```
+
+Search for the chart
+```sh
+helm search repo fga --devel
+```
+
+Install the Chart:
+```sh
+helm install fga-operator fga-operator/fga-operator --version <CHOOSE_VERSION>
+```
+
+Verify Installation:
+```sh
+helm list
+```
+
+The helm chart can be added as a chart dependency in `Chart.yaml`:
+```
+...
+dependencies:
+- name: fga-operator
+  version: "<CHOOSE_VERSION>"
+  repository: https://3schwartz.github.io/fga-operator/
+```
