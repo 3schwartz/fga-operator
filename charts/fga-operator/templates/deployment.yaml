@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "openfga-operator.fullname" . }}-controller-manager
+  name: {{ include "fga-operator.fullname" . }}-controller-manager
   labels:
     control-plane: controller-manager
-  {{- include "openfga-operator.labels" . | nindent 4 }}
+  {{- include "fga-operator.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.controllerManager.replicas }}
   selector:
     matchLabels:
       control-plane: controller-manager
-    {{- include "openfga-operator.selectorLabels" . | nindent 6 }}
+    {{- include "fga-operator.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
         control-plane: controller-manager
-      {{- include "openfga-operator.selectorLabels" . | nindent 8 }}
+      {{- include "fga-operator.selectorLabels" . | nindent 8 }}
       annotations:
         kubectl.kubernetes.io/default-container: manager
     spec:
@@ -26,14 +26,8 @@ spec:
         env:
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: {{ quote .Values.kubernetesClusterDomain }}
-        - name: OPENFGA_API_URL
-          value: {{ .Values.controllerManager.openFgaUrl }}
-        - name: OPENFGA_API_TOKEN
-          value: {{ .Values.controllerManager.openFgaApiToken }}
-        {{- with .Values.controllerManager.extraEnvVars }}
-            {{- toYaml . | nindent 8 }}
-        {{- end }}
-        image: {{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag | default .Chart.AppVersion }}
+        image: {{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag
+          | default .Chart.AppVersion }}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -53,5 +47,5 @@ spec:
           | nindent 10 }}
       securityContext:
         runAsNonRoot: true
-      serviceAccountName: {{ include "openfga-operator.fullname" . }}-controller-manager
+      serviceAccountName: {{ include "fga-operator.fullname" . }}-controller-manager
       terminationGracePeriodSeconds: 10
