@@ -69,8 +69,6 @@ jobs:
         run: make docker-build docker-push IMG=${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
 
   update-helm:
-    permissions:
-      contents: write
     runs-on: ubuntu-22.04
     if: github.ref == 'refs/heads/main'
     needs:
@@ -82,7 +80,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: ${{ env.BRANCH }}
+          token: ${{ secrets.GIT_PUSH }}
 
       - name: Configure Git
         run: |
@@ -104,7 +103,7 @@ jobs:
 
       - name: Push changes
         run: |
-          git push origin HEAD:${{ env.BRANCH }}        
+          git push origin HEAD:${{ env.BRANCH }}
 
   scan-image:
     permissions:
