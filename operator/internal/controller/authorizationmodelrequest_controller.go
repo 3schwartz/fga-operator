@@ -149,7 +149,14 @@ func updateAuthorizationModelModelMissingInstances(
 		if err != nil {
 			return false, err
 		}
-		log.V(0).Info(fmt.Sprintf("Applied version %s for model %s", modelRequestInstance.Version.String(), authorizationModel.Name))
+		log.V(0).Info("Created new authorization model in OpenFGA",
+			"authModel", authorizationModel.Name,
+			"version", modelRequestInstance.Version.String(),
+			"authModelId", authModelId)
+		log.V(0).Info(fmt.Sprintf("Authorization model resource will updates it's instances with id: %s", authModelId),
+			"authModel", authorizationModel.Name,
+			"version", modelRequestInstance.Version.String(),
+			"authModelId", authModelId)
 		modelInstances = append(modelInstances, extensionsv1.AuthorizationModelInstance{
 			Id:                 authModelId,
 			AuthorizationModel: modelRequestInstance.AuthorizationModel,
@@ -162,8 +169,10 @@ func updateAuthorizationModelModelMissingInstances(
 	return true, nil
 }
 
-func removeObsoleteInstances(authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
-	authorizationModel *extensionsv1.AuthorizationModel) bool {
+func removeObsoleteInstances(
+	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
+	authorizationModel *extensionsv1.AuthorizationModel,
+	log *logr.Logger) bool {
 
 	requestedModelVersions := make(map[extensionsv1.ModelVersion]struct{})
 
@@ -173,9 +182,14 @@ func removeObsoleteInstances(authorizationModelRequest *extensionsv1.Authorizati
 
 	existingInstances := make([]extensionsv1.AuthorizationModelInstance, 0)
 	for _, existingModel := range authorizationModel.Spec.Instances {
-		if _, exists := requestedModelVersions[existingModel.Version]; exists {
-			existingInstances = append(existingInstances, existingModel)
+		if _, exists := requestedModelVersions[existingModel.Version]; !exists {
+			log.V(0).Info(fmt.Sprintf("Authorization model resource will remove the instance with id: %s", existingModel.Id),
+				"authModel", authorizationModel.Name,
+				"version", existingModel.Version,
+				"authModelId", existingModel.Id)
+			continue
 		}
+		existingInstances = append(existingInstances, existingModel)
 	}
 	if len(existingInstances) == len(authorizationModel.Spec.Instances) {
 		return false
@@ -196,7 +210,7 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	if err != nil {
 		return err
 	}
-	removeObsolete := removeObsoleteInstances(authorizationModelRequest, authorizationModel)
+	removeObsolete := removeObsoleteInstances(authorizationModelRequest, authorizationModel, log)
 
 	if !(updateMissing || removeObsolete) {
 		return nil
@@ -231,9 +245,6 @@ func (r *AuthorizationModelRequestReconciler) getAuthorizationModel(
 			return nil, err
 		}
 	}
-	//if err = openFgaService.SetAuthorizationModelId(authorizationModel.Spec.Instance.Id); err != nil {
-	//	return nil, err
-	//} TODO: Don't think it is needed since relation isn't created?
 	return authorizationModel, nil
 }
 
