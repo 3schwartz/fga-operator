@@ -149,7 +149,7 @@ func updateAuthorizationModelModelMissingInstances(
 		if err != nil {
 			return false, err
 		}
-		log.V(0).Info("Applied version %s for model %s", modelRequestInstance.Version.String(), authorizationModel.Name)
+		log.V(0).Info(fmt.Sprintf("Applied version %s for model %s", modelRequestInstance.Version.String(), authorizationModel.Name))
 		modelInstances = append(modelInstances, extensionsv1.AuthorizationModelInstance{
 			Id:                 authModelId,
 			AuthorizationModel: modelRequestInstance.AuthorizationModel,
