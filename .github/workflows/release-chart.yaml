@@ -34,8 +34,14 @@ jobs:
 
       - name: Merge main into gh-pages
         run: |
+          git checkout main
+          git pull origin main
+
           git checkout gh-pages
+          git pull origin gh-pages
+
           git merge origin/main
+          
           git checkout main
 
       - name: Run chart-releaser
