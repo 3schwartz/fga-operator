@@ -28,6 +28,7 @@ import (
 // AuthorizationModelRequestSpec defines the desired state of AuthorizationModelRequest
 type AuthorizationModelRequestSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
+
 	Instances []AuthorizationModelRequestInstance `json:"instances,omitempty"`
 }
 

@@ -42,8 +42,6 @@ spec:
               AuthorizationModelRequest
             properties:
               instances:
-                description: 'Important: Run "make" to regenerate code after modifying
-                  this file'
                 items:
                   properties:
                     authorizationModel:

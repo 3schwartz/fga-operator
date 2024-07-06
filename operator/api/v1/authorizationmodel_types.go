@@ -38,6 +38,7 @@ const OpenFgaStoreIdUpdatedAtAnnotation = "openfga-store-id-updated-at"
 // AuthorizationModelSpec defines the desired state of AuthorizationModel
 type AuthorizationModelSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
+
 	Instances []AuthorizationModelInstance `json:"instances,omitempty"`
 }
 
