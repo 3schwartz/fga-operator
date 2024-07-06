@@ -116,6 +116,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ env.BRANCH }}
+          token: ${{ secrets.GIT_PUSH }}        
           fetch-depth: 0
 
       - name: Configure Git
@@ -137,6 +139,7 @@ jobs:
           git pull origin gh-pages
 
           git merge origin/main
+          git push origin gh-pages
           
           git checkout main
 
