@@ -111,6 +111,7 @@ jobs:
       actions: read
       contents: read
       packages: read
+      security-events: write
     runs-on: ubuntu-22.04
     needs:
       - build
@@ -146,6 +147,8 @@ jobs:
           sarif_file: snyk.sarif
 
   scan-repo:
+    permissions:
+      security-events: write
     runs-on: ubuntu-22.04
 
     steps:
