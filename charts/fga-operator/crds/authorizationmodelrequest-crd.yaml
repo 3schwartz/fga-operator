@@ -1,23 +1,22 @@
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-  name: authorizationmodels.extensions.openfga-controller
+  name: authorizationmodelrequests.extensions.fga-controller
 spec:
-  group: extensions.openfga-controller
+  group: extensions.fga-controller
   names:
-    kind: AuthorizationModel
-    listKind: AuthorizationModelList
-    plural: authorizationmodels
-    singular: authorizationmodel
+    kind: AuthorizationModelRequest
+    listKind: AuthorizationModelRequestList
+    plural: authorizationmodelrequests
+    singular: authorizationmodelrequest
   scope: Namespaced
   versions:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: AuthorizationModel is the Schema for the authorizationmodels
+        description: AuthorizationModelRequest is the Schema for the authorizationmodelrequests
           API
         properties:
           apiVersion:
@@ -38,35 +37,33 @@ spec:
           metadata:
             type: object
           spec:
-            description: AuthorizationModelSpec defines the desired state of AuthorizationModel
+            description: AuthorizationModelRequestSpec defines the desired state of
+              AuthorizationModelRequest
             properties:
-              authorizationModel:
-                type: string
-              instance:
-                properties:
-                  createdAt:
-                    format: date-time
-                    type: string
-                  id:
-                    type: string
-                  version:
-                    type: string
-                type: object
-              latestModels:
+              instances:
                 items:
                   properties:
-                    createdAt:
-                      format: date-time
-                      type: string
-                    id:
+                    authorizationModel:
                       type: string
                     version:
-                      type: string
+                      properties:
+                        major:
+                          type: integer
+                        minor:
+                          type: integer
+                        patch:
+                          type: integer
+                      required:
+                      - major
+                      - minor
+                      - patch
+                      type: object
                   type: object
                 type: array
             type: object
           status:
-            description: AuthorizationModelStatus defines the observed state of AuthorizationModel
+            description: AuthorizationModelRequestStatus defines the observed state
+              of AuthorizationModelRequest
             type: object
         type: object
     served: true

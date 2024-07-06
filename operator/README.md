@@ -1,11 +1,11 @@
 # operator
-// TODO(user): Add simple overview of use/purpose
+Bootstrapped using [Kubebuilder](https://book.kubebuilder.io/introduction.html)
 
 ## Run locally
 
 Start OpenFGA
 ```
-cd hosting
+cd hosting/docker-comopse
 docker-compose up
 ```
 
@@ -18,9 +18,6 @@ OPENFGA_API_URL=http://localhost:8089;OPENFGA_API_TOKEN=foobar
 ```
 mockgen -source=internal/openfga/openfga_service.go -destination=internal/openfga/mock_openfga_service.go -package openfga
 ```
-
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
 
 ## Getting Started
 
@@ -108,13 +105,12 @@ kubectl apply -f https://raw.githubusercontent.com/<org>/operator/<tag or branch
 ```
 
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
 
 **NOTE:** Run `make help` for more information on all potential `make` targets
 
 More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
-## License
+## License (from Kubebuilder)
 
 Copyright 2024.
 

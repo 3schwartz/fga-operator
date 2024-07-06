@@ -18,13 +18,13 @@ package controller
 
 import (
 	"context"
+	"fga-controller/internal/openfga"
 	"fmt"
 	"github.com/go-logr/logr"
 	appsV1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/clock"
-	openfgaInternal "openfga-controller/internal/openfga"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,15 +32,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	extensionsv1 "openfga-controller/api/v1"
+	extensionsv1 "fga-controller/api/v1"
 )
 
 // AuthorizationModelRequestReconciler reconciles a AuthorizationModelRequest object
 type AuthorizationModelRequestReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	openfgaInternal.PermissionServiceFactory
-	openfgaInternal.Config
+	openfga.PermissionServiceFactory
+	openfga.Config
 	Clock
 }
 
@@ -48,9 +48,11 @@ type Clock interface {
 	Now() time.Time
 }
 
-//+kubebuilder:rbac:groups=extensions.openfga-controller,resources=authorizationmodelrequests,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=extensions.openfga-controller,resources=authorizationmodelrequests/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=extensions.openfga-controller,resources=authorizationmodelrequests/finalizers,verbs=update
+const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
+
+//+kubebuilder:rbac:groups=extensions.fga-controller,resources=authorizationmodelrequests,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=extensions.fga-controller,resources=authorizationmodelrequests/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=extensions.fga-controller,resources=authorizationmodelrequests/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -89,7 +91,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	}
 
 	var deployments appsV1.DeploymentList
-	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingLabels{extensionsv1.OpenFgaStoreLabel: store.Name}); err != nil {
+	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingFields{deploymentIndexKey: store.Name}); err != nil {
 		logger.Error(err, "unable to list deployments")
 		return requeueResult, err
 	}
@@ -117,32 +119,104 @@ func (r *AuthorizationModelRequestReconciler) updateDeployment(
 	log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
 }
 
+func updateAuthorizationModelModelMissingInstances(
+	ctx context.Context,
+	openFgaService openfga.PermissionService,
+	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
+	authorizationModel *extensionsv1.AuthorizationModel,
+	reconcileTimestamp time.Time,
+	log *logr.Logger) (bool, error) {
+	missingInstances := make([]extensionsv1.AuthorizationModelRequestInstance, 0)
+	existingVersions := make(map[extensionsv1.ModelVersion]struct{})
+
+	for _, modelExisting := range authorizationModel.Spec.Instances {
+		existingVersions[modelExisting.Version] = struct{}{}
+	}
+
+	for _, modelRequest := range authorizationModelRequest.Spec.Instances {
+		if _, exists := existingVersions[modelRequest.Version]; !exists {
+			missingInstances = append(missingInstances, modelRequest)
+		}
+	}
+
+	if len(missingInstances) == 0 {
+		return false, nil
+	}
+
+	modelInstances := authorizationModel.Spec.Instances
+	for _, modelRequestInstance := range missingInstances {
+		authModelId, err := openFgaService.CreateAuthorizationModel(ctx, modelRequestInstance.AuthorizationModel, log)
+		if err != nil {
+			return false, err
+		}
+		log.V(0).Info("Created new authorization model in OpenFGA",
+			"authModel", authorizationModel.Name,
+			"version", modelRequestInstance.Version.String(),
+			"authModelId", authModelId)
+		log.V(0).Info(fmt.Sprintf("Authorization model resource will updates it's instances with id: %s", authModelId),
+			"authModel", authorizationModel.Name,
+			"version", modelRequestInstance.Version.String(),
+			"authModelId", authModelId)
+		modelInstances = append(modelInstances, extensionsv1.AuthorizationModelInstance{
+			Id:                 authModelId,
+			AuthorizationModel: modelRequestInstance.AuthorizationModel,
+			Version:            modelRequestInstance.Version,
+			CreatedAt:          &metav1.Time{Time: reconcileTimestamp},
+		})
+	}
+
+	authorizationModel.Spec.Instances = modelInstances
+	return true, nil
+}
+
+func removeObsoleteInstances(
+	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
+	authorizationModel *extensionsv1.AuthorizationModel,
+	log *logr.Logger) bool {
+
+	requestedModelVersions := make(map[extensionsv1.ModelVersion]struct{})
+
+	for _, requestModel := range authorizationModelRequest.Spec.Instances {
+		requestedModelVersions[requestModel.Version] = struct{}{}
+	}
+
+	existingInstances := make([]extensionsv1.AuthorizationModelInstance, 0)
+	for _, existingModel := range authorizationModel.Spec.Instances {
+		if _, exists := requestedModelVersions[existingModel.Version]; !exists {
+			log.V(0).Info(fmt.Sprintf("Authorization model resource will remove the instance with id: %s", existingModel.Id),
+				"authModel", authorizationModel.Name,
+				"version", existingModel.Version,
+				"authModelId", existingModel.Id)
+			continue
+		}
+		existingInstances = append(existingInstances, existingModel)
+	}
+	if len(existingInstances) == len(authorizationModel.Spec.Instances) {
+		return false
+	}
+	authorizationModel.Spec.Instances = existingInstances
+	return true
+}
+
 func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	ctx context.Context,
-	openFgaService openfgaInternal.PermissionService,
+	openFgaService openfga.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	authorizationModel *extensionsv1.AuthorizationModel,
 	reconcileTimestamp time.Time,
 	log *logr.Logger) error {
 
-	if authorizationModelRequest.Spec.Version == authorizationModel.Spec.Instance.Version &&
-		authorizationModelRequest.Spec.AuthorizationModel == authorizationModel.Spec.AuthorizationModel {
-		return nil
-	}
-
-	authModelId, err := openFgaService.CreateAuthorizationModel(ctx, authorizationModelRequest, log)
+	updateMissing, err := updateAuthorizationModelModelMissingInstances(ctx, openFgaService, authorizationModelRequest, authorizationModel, reconcileTimestamp, log)
 	if err != nil {
 		return err
 	}
+	removeObsolete := removeObsoleteInstances(authorizationModelRequest, authorizationModel, log)
 
-	authorizationModel.Spec.LatestModels = append(authorizationModel.Spec.LatestModels, authorizationModel.Spec.Instance)
-	authorizationModel.Spec.AuthorizationModel = authorizationModelRequest.Spec.AuthorizationModel
-	authorizationModel.Spec.Instance = extensionsv1.AuthorizationModelInstance{
-		Id:        authModelId,
-		Version:   authorizationModelRequest.Spec.Version,
-		CreatedAt: &metav1.Time{Time: reconcileTimestamp},
+	if !(updateMissing || removeObsolete) {
+		return nil
 	}
-	if err = r.Update(ctx, authorizationModel); err != nil {
+
+	if err := r.Update(ctx, authorizationModel); err != nil {
 		log.Error(err, "unable to update authorization model in Kubernetes", "authorizationModel", authorizationModel)
 		return err
 	}
@@ -155,7 +229,7 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 func (r *AuthorizationModelRequestReconciler) getAuthorizationModel(
 	ctx context.Context,
 	req ctrl.Request,
-	openFgaService openfgaInternal.PermissionService,
+	openFgaService openfga.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	reconcileTimestamp time.Time,
 	log *logr.Logger) (*extensionsv1.AuthorizationModel, error) {
@@ -171,26 +245,27 @@ func (r *AuthorizationModelRequestReconciler) getAuthorizationModel(
 			return nil, err
 		}
 	}
-	if err = openFgaService.SetAuthorizationModelId(authorizationModel.Spec.Instance.Id); err != nil {
-		return nil, err
-	}
 	return authorizationModel, nil
 }
 
 func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 	ctx context.Context,
 	req ctrl.Request,
-	openFgaService openfgaInternal.PermissionService,
+	openFgaService openfga.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	reconcileTimestamp time.Time,
 	log *logr.Logger) (*extensionsv1.AuthorizationModel, error) {
 
-	authModelId, err := openFgaService.CreateAuthorizationModel(ctx, authorizationModelRequest, log)
-	if err != nil {
-		return nil, err
+	definitions := make([]extensionsv1.AuthorizationModelDefinition, len(authorizationModelRequest.Spec.Instances))
+	for i, instance := range authorizationModelRequest.Spec.Instances {
+		authModelId, err := openFgaService.CreateAuthorizationModel(ctx, instance.AuthorizationModel, log)
+		if err != nil {
+			return nil, err
+		}
+		definitions[i] = extensionsv1.NewAuthorizationModelDefinition(authModelId, instance.AuthorizationModel, instance.Version)
 	}
 
-	authorizationModel := extensionsv1.NewAuthorizationModel(req.Name, req.Namespace, authModelId, authorizationModelRequest.Spec.Version, authorizationModelRequest.Spec.AuthorizationModel, reconcileTimestamp)
+	authorizationModel := extensionsv1.NewAuthorizationModel(req.Name, req.Namespace, definitions, reconcileTimestamp)
 
 	if err := ctrl.SetControllerReference(authorizationModelRequest, &authorizationModel, r.Scheme); err != nil {
 		return nil, err
@@ -207,7 +282,7 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 func (r *AuthorizationModelRequestReconciler) getStore(
 	ctx context.Context,
 	req ctrl.Request,
-	openFgaService openfgaInternal.PermissionService,
+	openFgaService openfga.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	log *logr.Logger) (*extensionsv1.Store, error) {
 
@@ -229,7 +304,7 @@ func (r *AuthorizationModelRequestReconciler) getStore(
 func (r *AuthorizationModelRequestReconciler) createStoreResource(
 	ctx context.Context,
 	req ctrl.Request,
-	openFgaService openfgaInternal.PermissionService,
+	openFgaService openfga.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	log *logr.Logger) (*extensionsv1.Store, error) {
 
@@ -263,7 +338,16 @@ func (r *AuthorizationModelRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 		r.Clock = clock.RealClock{}
 	}
 
-	// TODO: Create index on deployment
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &appsV1.Deployment{}, deploymentIndexKey, func(rawObj client.Object) []string {
+		deployment := rawObj.(*appsV1.Deployment)
+		labelValue, exists := deployment.Labels[extensionsv1.OpenFgaStoreLabel]
+		if !exists {
+			return nil
+		}
+		return []string{labelValue}
+	}); err != nil {
+		return err
+	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&extensionsv1.AuthorizationModelRequest{}).

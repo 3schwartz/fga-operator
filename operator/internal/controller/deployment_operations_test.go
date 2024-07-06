@@ -6,8 +6,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"testing"
 
+	extensionsv1 "fga-controller/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	extensionsv1 "openfga-controller/api/v1"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -22,8 +22,12 @@ func (m *MockAuthorizationModel) GetVersionFromDeployment(deployment appsV1.Depl
 		return extensionsv1.AuthorizationModelInstance{}, errors.New("mock error")
 	}
 	return extensionsv1.AuthorizationModelInstance{
-		Id:      "auth-model-id",
-		Version: "v1",
+		Id: "auth-model-id",
+		Version: extensionsv1.ModelVersion{
+			Major: 1,
+			Minor: 2,
+			Patch: 3,
+		},
 	}, nil
 }
 
@@ -283,7 +287,7 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 					},
 					map[string]string{
 						extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation: reconcileTimestampFormatted,
-						extensionsv1.OpenFgaAuthModelVersionLabel:     "v1",
+						extensionsv1.OpenFgaAuthModelVersionLabel:     "1.2.3",
 					},
 				),
 			},
@@ -345,7 +349,7 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 					},
 					map[string]string{
 						extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation: reconcileTimestampFormatted,
-						extensionsv1.OpenFgaAuthModelVersionLabel:     "v1",
+						extensionsv1.OpenFgaAuthModelVersionLabel:     "1.2.3",
 					},
 				),
 			},

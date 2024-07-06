@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package v1 contains API Schema definitions for the extensions v1 API group
 // +kubebuilder:object:generate=true
-// +groupName=extensions.openfga-controller
+// +groupName=extensions.fga-controller
 package v1
 
 import (
@@ -26,7 +26,7 @@ import (
 
 var (
 	// GroupVersion is group version used to register these objects
-	GroupVersion = schema.GroupVersion{Group: "extensions.openfga-controller", Version: "v1"}
+	GroupVersion = schema.GroupVersion{Group: "extensions.fga-controller", Version: "v1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}

@@ -39,9 +39,7 @@ const OpenFgaStoreIdUpdatedAtAnnotation = "openfga-store-id-updated-at"
 type AuthorizationModelSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Instance           AuthorizationModelInstance   `json:"instance,omitempty"`
-	AuthorizationModel string                       `json:"authorizationModel,omitempty"`
-	LatestModels       []AuthorizationModelInstance `json:"latestModels,omitempty"`
+	Instances []AuthorizationModelInstance `json:"instances,omitempty"`
 }
 
 // AuthorizationModelStatus defines the observed state of AuthorizationModel
@@ -76,23 +74,58 @@ func init() {
 	SchemeBuilder.Register(&AuthorizationModel{}, &AuthorizationModelList{})
 }
 
+type AuthorizationModelDefinition struct {
+	Id                 string
+	AuthorizationModel string
+	Version            ModelVersion
+}
+
+func NewAuthorizationModelDefinition(id string, authorizationModel string, version ModelVersion) AuthorizationModelDefinition {
+	return AuthorizationModelDefinition{
+		Id:                 id,
+		AuthorizationModel: authorizationModel,
+		Version:            version,
+	}
+}
+
+func (d AuthorizationModelDefinition) IntoInstance(now time.Time) AuthorizationModelInstance {
+	return AuthorizationModelInstance{
+		Id:                 d.Id,
+		AuthorizationModel: d.AuthorizationModel,
+		Version:            d.Version,
+		CreatedAt:          &metav1.Time{Time: now},
+	}
+}
+
 type AuthorizationModelInstance struct {
-	Id        string       `json:"id,omitempty"`
-	Version   string       `json:"version,omitempty"`
-	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
+	Id                 string       `json:"id,omitempty"`
+	AuthorizationModel string       `json:"authorizationModel,omitempty"`
+	Version            ModelVersion `json:"version,omitempty"`
+	CreatedAt          *metav1.Time `json:"createdAt,omitempty"`
 }
 
-type ByCreatedAtDesc []AuthorizationModelInstance
+type ByVersionAndCreatedAtDesc []AuthorizationModelInstance
 
-func (a ByCreatedAtDesc) Len() int           { return len(a) }
-func (a ByCreatedAtDesc) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByCreatedAtDesc) Less(i, j int) bool { return a[i].CreatedAt.After(a[j].CreatedAt.Time) }
-
-func SortAuthorizationModelInstancesByCreatedAtDesc(instances []AuthorizationModelInstance) {
-	sort.Sort(ByCreatedAtDesc(instances))
+func (a ByVersionAndCreatedAtDesc) Len() int      { return len(a) }
+func (a ByVersionAndCreatedAtDesc) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a ByVersionAndCreatedAtDesc) Less(i, j int) bool {
+	if a[i].Version.Major != a[j].Version.Major {
+		return a[i].Version.Major > a[j].Version.Major
+	}
+	if a[i].Version.Minor != a[j].Version.Minor {
+		return a[i].Version.Minor > a[j].Version.Minor
+	}
+	if a[i].Version.Patch != a[j].Version.Patch {
+		return a[i].Version.Patch > a[j].Version.Patch
+	}
+	return a[i].CreatedAt.After(a[j].CreatedAt.Time)
 }
 
-func FilterBySchemaVersion(instances []AuthorizationModelInstance, version string) []AuthorizationModelInstance {
+func SortAuthorizationModelInstancesByVersionAndCreatedAtDesc(instances []AuthorizationModelInstance) {
+	sort.Sort(ByVersionAndCreatedAtDesc(instances))
+}
+
+func FilterBySchemaVersion(instances []AuthorizationModelInstance, version ModelVersion) []AuthorizationModelInstance {
 	var filtered []AuthorizationModelInstance
 	for _, instance := range instances {
 		if instance.Version == version {
@@ -102,7 +135,11 @@ func FilterBySchemaVersion(instances []AuthorizationModelInstance, version strin
 	return filtered
 }
 
-func NewAuthorizationModel(name, namespace, authModelId, version, authModel string, now time.Time) AuthorizationModel {
+func NewAuthorizationModel(name, namespace string, definitions []AuthorizationModelDefinition, now time.Time) AuthorizationModel {
+	instances := make([]AuthorizationModelInstance, len(definitions))
+	for i, definition := range definitions {
+		instances[i] = definition.IntoInstance(now)
+	}
 	return AuthorizationModel{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -112,26 +149,29 @@ func NewAuthorizationModel(name, namespace, authModelId, version, authModel stri
 			},
 		},
 		Spec: AuthorizationModelSpec{
-			Instance: AuthorizationModelInstance{
-				Id:        authModelId,
-				Version:   version,
-				CreatedAt: &metav1.Time{Time: now},
-			},
-			AuthorizationModel: authModel,
+			Instances: instances,
 		},
 	}
 }
 
 func (a *AuthorizationModel) GetVersionFromDeployment(deployment v1.Deployment) (AuthorizationModelInstance, error) {
+	if len(a.Spec.Instances) == 0 {
+		return AuthorizationModelInstance{}, fmt.Errorf("no authorization model exists")
+	}
 	version, ok := deployment.Labels[OpenFgaAuthModelVersionLabel]
 	if ok {
-		instances := append(a.Spec.LatestModels, a.Spec.Instance)
-		filtered := FilterBySchemaVersion(instances, version)
+		modelVersion, err := ModelVersionFromString(version)
+		if err != nil {
+			return AuthorizationModelInstance{}, err
+		}
+		filtered := FilterBySchemaVersion(a.Spec.Instances, modelVersion)
 		if len(filtered) == 0 {
 			return AuthorizationModelInstance{}, fmt.Errorf("neither current or any latest models match version %s", version)
 		}
-		SortAuthorizationModelInstancesByCreatedAtDesc(filtered)
+		SortAuthorizationModelInstancesByVersionAndCreatedAtDesc(filtered)
 		return filtered[0], nil
 	}
-	return a.Spec.Instance, nil
+
+	SortAuthorizationModelInstancesByVersionAndCreatedAtDesc(a.Spec.Instances)
+	return a.Spec.Instances[0], nil
 }

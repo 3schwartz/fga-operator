@@ -8,7 +8,6 @@ import (
 	ofgaClient "github.com/openfga/go-sdk/client"
 	"github.com/openfga/go-sdk/credentials"
 	"github.com/openfga/language/pkg/go/transformer"
-	extensionsv1 "openfga-controller/api/v1"
 	"time"
 )
 
@@ -19,7 +18,7 @@ type PermissionServiceFactory interface {
 type PermissionService interface {
 	SetStoreId(storeId string)
 	SetAuthorizationModelId(authorizationModelId string) error
-	CreateAuthorizationModel(ctx context.Context, authorizationModelRequest *extensionsv1.AuthorizationModelRequest, log *logr.Logger) (string, error)
+	CreateAuthorizationModel(ctx context.Context, authorizationModel string, log *logr.Logger) (string, error)
 	CheckExistingStores(ctx context.Context, storeName string) (*Store, error)
 	CreateStore(ctx context.Context, storeName string, log *logr.Logger) (*Store, error)
 }
@@ -112,10 +111,10 @@ func (s *OpenFgaService) SetAuthorizationModelId(authorizationModelId string) er
 
 func (s *OpenFgaService) CreateAuthorizationModel(
 	ctx context.Context,
-	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
+	authorizationModel string,
 	log *logr.Logger) (string, error) {
 
-	generatedJsonString, err := transformer.TransformDSLToJSON(authorizationModelRequest.Spec.AuthorizationModel)
+	generatedJsonString, err := transformer.TransformDSLToJSON(authorizationModel)
 	if err != nil {
 		return "", err
 	}

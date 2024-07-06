@@ -1,11 +1,11 @@
 package controller
 
 import (
+	extensionsv1 "fga-controller/api/v1"
+	"fga-controller/internal/interfaces"
 	"github.com/go-logr/logr"
 	appsV1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	extensionsv1 "openfga-controller/api/v1"
-	"openfga-controller/internal/interfaces"
 	"time"
 )
 
@@ -54,7 +54,7 @@ func updateAuthorizationModelIdOnDeployment(
 		}
 
 		deployment.Annotations[extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation] = reconcileTimestamp.UTC().Format(time.RFC3339)
-		deployment.Annotations[extensionsv1.OpenFgaAuthModelVersionLabel] = authInstance.Version
+		deployment.Annotations[extensionsv1.OpenFgaAuthModelVersionLabel] = authInstance.Version.String()
 
 		updates[deploymentIdentifier] = deployment
 	}

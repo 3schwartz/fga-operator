@@ -1,4 +1,4 @@
-apiVersion: extensions.openfga-controller/v1
+apiVersion: extensions.fga-controller/v1
 kind: Store
 metadata:
   labels:

@@ -1,4 +1,4 @@
-# Configuration for the OpenFGA Operator Controller Manager
+# Configuration for the FGA Operator Controller Manager
 controllerManager:
   # URL of the OpenFGA API
   openFgaUrl: 'http://openfga.default.svc.cluster.local:8080'
@@ -11,6 +11,7 @@ controllerManager:
     - --leader-elect
     - --health-probe-bind-address=:8081
     - --metrics-bind-address=0
+    - --zap-devel=false
     
     # Security context for the controller manager container
     containerSecurityContext:
@@ -21,8 +22,8 @@ controllerManager:
         
     # Image configuration for the controller manager
     image:
-      repository: ghcr.io/3schwartz/openfga-operator
-      tag: 9734427230
+      repository: ghcr.io/3schwartz/fga-operator
+      tag: 9818426264
       
     # Resource requests and limits for the controller manager container
     resources:

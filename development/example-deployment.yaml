@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    openfga-store: documents
+    openfga-auth-model-version: "1.1.1"
+    app: annotated-curl
+  name: annotated-curl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: annotated-curl
+  template:
+    metadata:
+      labels:
+        app: annotated-curl
+    spec:
+      containers:
+      - name: main
+        image: curlimages/curl:8.7.1
+        command: ["sleep", "9999999"]
+        env:
+          - name: "foo"
+            value: "bar"

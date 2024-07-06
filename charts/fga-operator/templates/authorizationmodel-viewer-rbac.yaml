@@ -1,16 +1,14 @@
-# permissions for end users to view stores.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  name: {{ include "fga-operator.fullname" . }}-authorizationmodel-viewer-role
   labels:
-    app.kubernetes.io/name: operator
-    app.kubernetes.io/managed-by: kustomize
-  name: store-viewer-role
+  {{- include "fga-operator.labels" . | nindent 4 }}
 rules:
 - apiGroups:
   - extensions.fga-controller
   resources:
-  - stores
+  - authorizationmodels
   verbs:
   - get
   - list
@@ -18,6 +16,6 @@ rules:
 - apiGroups:
   - extensions.fga-controller
   resources:
-  - stores/status
+  - authorizationmodels/status
   verbs:
   - get

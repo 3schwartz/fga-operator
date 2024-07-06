@@ -1,9 +1,12 @@
-name: Test and build
+name: Test, build and update helm
 
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'charts/fga-operator/values.yaml'
+      - 'charts/fga-operator/Chart.yaml'      
   pull_request:
     branches:
       - main
@@ -36,7 +39,7 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
 
       - name: Start OpenFGA
-        run: docker-compose -f hosting/docker-compose.yaml up --wait
+        run: docker-compose -f development/docker-compose/docker-compose.yaml up --wait
 
       - name: Run tests
         working-directory: ./operator
@@ -65,11 +68,49 @@ jobs:
         working-directory: ./operator
         run: make docker-build docker-push IMG=${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
 
+  update-helm:
+    runs-on: ubuntu-22.04
+    if: github.ref == 'refs/heads/main'
+    needs:
+      - build
+    env:
+      BRANCH: ${{ github.head_ref || github.ref_name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH }}
+          token: ${{ secrets.GIT_PUSH }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+
+      - name: Update values.yaml
+        run: |
+          sed -i 's/tag: .*/tag: ${{ github.run_id }}/' charts/fga-operator/values.yaml
+
+      - name: Update Chart.yaml version
+        run: |
+          sed -i -E 's/(version: [0-9]+\.[0-9]+\.[0-9]+).*/\1-${{ github.run_id }}/' charts/fga-operator/Chart.yaml
+
+      - name: Commit updated files
+        run: |
+          git add charts/fga-operator/values.yaml charts/fga-operator/Chart.yaml
+          git commit -m "Update controllerManager.image.tag and chart version to ${{ github.run_id }}"
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:${{ env.BRANCH }}
+
   scan-image:
     permissions:
       actions: read
       contents: read
       packages: read
+      security-events: write
     runs-on: ubuntu-22.04
     needs:
       - build
@@ -99,13 +140,14 @@ jobs:
           image: ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
           args: --file=./operator/Dockerfile --severity-threshold=high --sarif-file-output=snyk.sarif
     
-    # # Doesn't work since can't enable in free private repo
-    # - name: Upload Snyk report as sarif
-    #   uses: github/codeql-action/upload-sarif@v3
-    #   with:
-    #     sarif_file: snyk.sarif
+      - name: Upload Snyk report as sarif
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk.sarif
 
   scan-repo:
+    permissions:
+      security-events: write
     runs-on: ubuntu-22.04
 
     steps:
@@ -120,8 +162,7 @@ jobs:
         with:
           args: ./operator --severity-threshold=high --sarif-file-output=snyk.sarif
 
-      # # Doesn't work since can't enable in free private repo
-      # - name: Upload result to GitHub Code Scanning
-      #   uses: github/codeql-action/upload-sarif@v2
-      #   with:
-      #     sarif_file: snyk.sarif
+      - name: Upload result to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk.sarif

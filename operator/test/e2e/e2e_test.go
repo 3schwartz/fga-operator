@@ -27,7 +27,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"openfga-controller/test/utils"
+	"fga-controller/test/utils"
 )
 
 const namespace = "operator-system"
