@@ -82,7 +82,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.BRANCH }}
-          token: ${{ secret.GIT_PUSH }}
+          token: ${{ secrets.GIT_PUSH }}
 
       - name: Configure Git
         run: |
