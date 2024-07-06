@@ -119,14 +119,13 @@ func (r *AuthorizationModelRequestReconciler) updateDeployment(
 	log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
 }
 
-func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
+func updateAuthorizationModelModelMissingInstances(
 	ctx context.Context,
 	openFgaService openfgaInternal.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	authorizationModel *extensionsv1.AuthorizationModel,
 	reconcileTimestamp time.Time,
-	log *logr.Logger) error {
-
+	log *logr.Logger) (bool, error) {
 	missingInstances := make([]extensionsv1.AuthorizationModelRequestInstance, 0)
 	existingVersions := make(map[extensionsv1.ModelVersion]struct{})
 
@@ -141,14 +140,14 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	}
 
 	if len(missingInstances) == 0 {
-		return nil
+		return false, nil
 	}
 
 	modelInstances := authorizationModel.Spec.Instances
 	for _, modelRequestInstance := range missingInstances {
 		authModelId, err := openFgaService.CreateAuthorizationModel(ctx, modelRequestInstance.AuthorizationModel, log)
 		if err != nil {
-			return err
+			return false, err
 		}
 		log.V(0).Info("Applied version %s for model %s", modelRequestInstance.Version.String(), authorizationModel.Name)
 		modelInstances = append(modelInstances, extensionsv1.AuthorizationModelInstance{
@@ -160,6 +159,49 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	}
 
 	authorizationModel.Spec.Instances = modelInstances
+	return true, nil
+}
+
+func removeObsoleteInstances(authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
+	authorizationModel *extensionsv1.AuthorizationModel) bool {
+
+	requestedModelVersions := make(map[extensionsv1.ModelVersion]struct{})
+
+	for _, requestModel := range authorizationModelRequest.Spec.Instances {
+		requestedModelVersions[requestModel.Version] = struct{}{}
+	}
+
+	existingInstances := make([]extensionsv1.AuthorizationModelInstance, 0)
+	for _, existingModel := range authorizationModel.Spec.Instances {
+		if _, exists := requestedModelVersions[existingModel.Version]; exists {
+			existingInstances = append(existingInstances, existingModel)
+		}
+	}
+	if len(existingInstances) == len(authorizationModel.Spec.Instances) {
+		return false
+	}
+	authorizationModel.Spec.Instances = existingInstances
+	return true
+}
+
+func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
+	ctx context.Context,
+	openFgaService openfgaInternal.PermissionService,
+	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
+	authorizationModel *extensionsv1.AuthorizationModel,
+	reconcileTimestamp time.Time,
+	log *logr.Logger) error {
+
+	updateMissing, err := updateAuthorizationModelModelMissingInstances(ctx, openFgaService, authorizationModelRequest, authorizationModel, reconcileTimestamp, log)
+	if err != nil {
+		return err
+	}
+	removeObsolete := removeObsoleteInstances(authorizationModelRequest, authorizationModel)
+
+	if !(updateMissing || removeObsolete) {
+		return nil
+	}
+
 	if err := r.Update(ctx, authorizationModel); err != nil {
 		log.Error(err, "unable to update authorization model in Kubernetes", "authorizationModel", authorizationModel)
 		return err

@@ -278,39 +278,38 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			Expect(newModelK8.AuthorizationModel).To(Equal(modelUpdated))
 		})
 
-		//It("given changes in auth model when remove one then do changes", func() {
-		//	// Arrange
-		//	authModel := createAuthorizationModel(resourceName, namespaceName)
-		//	Expect(k8sClient.Create(ctx, &authModel)).To(Succeed())
-		//	authModelRequest := createAuthorizationModelRequestWithSpecs(resourceName, namespaceName, modelUpdated, versionUpdated)
-		//	oldIds := make([]string, len(authModelRequest.Spec.Instances))
-		//	for i, instance := range authModel.Spec.Instances {
-		//		oldIds[i] = instance.Id
-		//	}
-		//	newAuthModelId := uuid.NewString()
-		//	mockService := openfgainternal.NewMockPermissionService(goMockController)
-		//	mockService.EXPECT().
-		//		CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
-		//		Return(newAuthModelId, nil)
-		//
-		//	Expect(len(authModel.Spec.Instances)).To(Equal(1))
-		//
-		//	// Act
-		//	err := controllerReconciler.updateAuthorizationModel(ctx, mockService, &authModelRequest, &authModel, time.Now(), &logger)
-		//
-		//	// Assert
-		//	Expect(err).NotTo(HaveOccurred())
-		//	Expect(len(authModel.Spec.LatestModels)).To(Equal(1))
-		//	Expect(authModel.Spec.LatestModels[0].Id).To(Equal(oldAuthModelId))
-		//	Expect(authModel.Spec.Instance.Id).To(Equal(newAuthModelId))
-		//	Expect(authModel.Spec.Instance.Version).To(Equal(versionUpdated))
-		//	Expect(authModel.Spec.AuthorizationModel).To(Equal(modelUpdated))
-		//	var authModelInK8 extensionsv1.AuthorizationModel
-		//	Expect(k8sClient.Get(ctx, typeNamespacedName, &authModelInK8)).To(Succeed())
-		//	Expect(authModelInK8.Spec.Instance.Id).To(Equal(newAuthModelId))
-		//	Expect(authModelInK8.Spec.Instance.Version).To(Equal(versionUpdated))
-		//	Expect(authModelInK8.Spec.AuthorizationModel).To(Equal(modelUpdated))
-		//	Expect(len(authModelInK8.Spec.LatestModels)).To(Equal(1))
-		//})
+		It("when remove model from request then remove model from auth model resource", func() {
+			// Arrange
+			authModel := createAuthorizationModel(resourceName, namespaceName)
+			Expect(k8sClient.Create(ctx, &authModel)).To(Succeed())
+			requestInstances := authorizationModelRequestInstancesFromSingle(modelUpdated, versionUpdated)
+			authModelRequest := createAuthorizationModelRequestWithSpecs(resourceName, namespaceName, requestInstances)
+			newAuthModelId := uuid.NewString()
+			mockService := openfgainternal.NewMockPermissionService(goMockController)
+			mockService.EXPECT().
+				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(newAuthModelId, nil)
+
+			Expect(len(authModel.Spec.Instances)).To(Equal(1))
+
+			// Act
+			err := controllerReconciler.updateAuthorizationModel(ctx, mockService, &authModelRequest, &authModel, time.Now(), &logger)
+
+			// Assert
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(authModel.Spec.Instances)).To(Equal(1))
+			instance := authModel.Spec.Instances[0]
+			Expect(instance.Id).To(Equal(newAuthModelId))
+			Expect(instance.Version).To(Equal(versionUpdated))
+			Expect(instance.AuthorizationModel).To(Equal(modelUpdated))
+
+			var authModelInK8 extensionsv1.AuthorizationModel
+			Expect(k8sClient.Get(ctx, typeNamespacedName, &authModelInK8)).To(Succeed())
+			Expect(len(authModelInK8.Spec.Instances)).To(Equal(1))
+			instanceK8 := authModelInK8.Spec.Instances[0]
+			Expect(instanceK8.Id).To(Equal(newAuthModelId))
+			Expect(instanceK8.Version).To(Equal(versionUpdated))
+			Expect(instanceK8.AuthorizationModel).To(Equal(modelUpdated))
+		})
 	})
 })
