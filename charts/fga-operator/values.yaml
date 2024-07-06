@@ -1,4 +1,4 @@
-# Configuration for the OpenFGA Operator Controller Manager
+# Configuration for the FGA Operator Controller Manager
 controllerManager:
   # URL of the OpenFGA API
   openFgaUrl: 'http://openfga.default.svc.cluster.local:8080'
@@ -22,7 +22,7 @@ controllerManager:
         
     # Image configuration for the controller manager
     image:
-      repository: ghcr.io/3schwartz/openfga-operator
+      repository: ghcr.io/3schwartz/fga-operator
       tag: 9817780624
       
     # Resource requests and limits for the controller manager container
