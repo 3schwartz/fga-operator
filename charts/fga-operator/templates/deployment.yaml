@@ -26,8 +26,14 @@ spec:
         env:
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: {{ quote .Values.kubernetesClusterDomain }}
-        image: {{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag
-          | default .Chart.AppVersion }}
+        - name: OPENFGA_API_URL
+          value: {{ .Values.controllerManager.openFgaUrl }}
+        - name: OPENFGA_API_TOKEN
+          value: {{ .Values.controllerManager.openFgaApiToken }}
+        {{- with .Values.controllerManager.extraEnvVars }}
+            {{- toYaml . | nindent 8 }}
+        {{- end }}
+        image: {{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag | default .Chart.AppVersion }}
         livenessProbe:
           httpGet:
             path: /healthz
