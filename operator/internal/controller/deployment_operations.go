@@ -22,7 +22,7 @@ func updateStoreIdOnDeployments(
 	updates := map[DeploymentIdentifier]appsV1.Deployment{}
 	for _, deployment := range deployments.Items {
 		if updateDeploymentEnvVar(&deployment, extensionsv1.OpenFgaStoreIdEnv, store.Spec.Id) {
-			deployment.Annotations[extensionsv1.FgaStoreIdUpdatedAtAnnotation] = reconcileTimestamp.UTC().Format(time.RFC3339)
+			deployment.Annotations[extensionsv1.OpenFgaStoreIdUpdatedAtAnnotation] = reconcileTimestamp.UTC().Format(time.RFC3339)
 
 			updates[DeploymentIdentifier{namespace: deployment.Namespace, name: deployment.Name}] = deployment
 		}
@@ -53,8 +53,8 @@ func updateAuthorizationModelIdOnDeployment(
 			continue
 		}
 
-		deployment.Annotations[extensionsv1.FgaAuthIdUpdatedAtAnnotation] = reconcileTimestamp.UTC().Format(time.RFC3339)
-		deployment.Annotations[extensionsv1.FgaAuthModelVersionLabel] = authInstance.Version.String()
+		deployment.Annotations[extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation] = reconcileTimestamp.UTC().Format(time.RFC3339)
+		deployment.Annotations[extensionsv1.OpenFgaAuthModelVersionLabel] = authInstance.Version.String()
 
 		updates[deploymentIdentifier] = deployment
 	}

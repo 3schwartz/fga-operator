@@ -48,7 +48,7 @@ type Clock interface {
 	Now() time.Time
 }
 
-const deploymentIndexKey = ".metadata.labels." + extensionsv1.FgaStoreLabel
+const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
 
 //+kubebuilder:rbac:groups=extensions.fga-controller,resources=authorizationmodelrequests,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=extensions.fga-controller,resources=authorizationmodelrequests/status,verbs=get;update;patch
@@ -340,7 +340,7 @@ func (r *AuthorizationModelRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &appsV1.Deployment{}, deploymentIndexKey, func(rawObj client.Object) []string {
 		deployment := rawObj.(*appsV1.Deployment)
-		labelValue, exists := deployment.Labels[extensionsv1.FgaStoreLabel]
+		labelValue, exists := deployment.Labels[extensionsv1.OpenFgaStoreLabel]
 		if !exists {
 			return nil
 		}

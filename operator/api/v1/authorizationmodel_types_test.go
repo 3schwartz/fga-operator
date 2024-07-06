@@ -122,7 +122,7 @@ func TestWhenNoVersionMatchThenReturnError(t *testing.T) {
 		},
 	}
 	deployment := createDeployment()
-	deployment.Labels[FgaAuthModelVersionLabel] = version
+	deployment.Labels[OpenFgaAuthModelVersionLabel] = version
 
 	// Act
 	_, err := authModel.GetVersionFromDeployment(deployment)
@@ -246,7 +246,7 @@ func TestAuthorizationModelGetVersionWithLatest(t *testing.T) {
 				},
 			}
 			deployment := createDeployment()
-			deployment.Labels[FgaAuthModelVersionLabel] = version.String()
+			deployment.Labels[OpenFgaAuthModelVersionLabel] = version.String()
 
 			// Act
 			actualInstance, err := authModel.GetVersionFromDeployment(deployment)
@@ -279,7 +279,7 @@ func TestWhenVersionIsSameAsCurrentInstanceThenReturnCurrentInstance(t *testing.
 		},
 	}
 	deployment := createDeployment()
-	deployment.Labels[FgaAuthModelVersionLabel] = version.String()
+	deployment.Labels[OpenFgaAuthModelVersionLabel] = version.String()
 
 	// Act
 	actualInstance, err := authModel.GetVersionFromDeployment(deployment)

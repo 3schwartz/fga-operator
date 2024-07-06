@@ -112,7 +112,7 @@ func TestUpdateStoreIdOnDeployments(t *testing.T) {
 						{Name: extensionsv1.OpenFgaStoreIdEnv, Value: "store-id"},
 					},
 					map[string]string{
-						extensionsv1.FgaStoreIdUpdatedAtAnnotation: reconcileTimestampFormatted,
+						extensionsv1.OpenFgaStoreIdUpdatedAtAnnotation: reconcileTimestampFormatted,
 					},
 				),
 			},
@@ -141,7 +141,7 @@ func TestUpdateStoreIdOnDeployments(t *testing.T) {
 						{Name: extensionsv1.OpenFgaStoreIdEnv, Value: "store-id"},
 					},
 					map[string]string{
-						extensionsv1.FgaStoreIdUpdatedAtAnnotation: reconcileTimestampFormatted,
+						extensionsv1.OpenFgaStoreIdUpdatedAtAnnotation: reconcileTimestampFormatted,
 					},
 				),
 			},
@@ -286,8 +286,8 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 						{Name: extensionsv1.OpenFgaAuthModelIdEnv, Value: "auth-model-id"},
 					},
 					map[string]string{
-						extensionsv1.FgaAuthIdUpdatedAtAnnotation: reconcileTimestampFormatted,
-						extensionsv1.FgaAuthModelVersionLabel:     "1.2.3",
+						extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation: reconcileTimestampFormatted,
+						extensionsv1.OpenFgaAuthModelVersionLabel:     "1.2.3",
 					},
 				),
 			},
@@ -325,7 +325,7 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 						{Name: extensionsv1.OpenFgaAuthModelIdEnv, Value: "existing-value"},
 					},
 					map[string]string{
-						extensionsv1.FgaAuthIdUpdatedAtAnnotation: "existing-timestamp",
+						extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation: "existing-timestamp",
 					},
 				),
 			},
@@ -338,7 +338,7 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 						{Name: extensionsv1.OpenFgaAuthModelIdEnv, Value: "existing-value"},
 					},
 					map[string]string{
-						extensionsv1.FgaAuthIdUpdatedAtAnnotation: "existing-timestamp",
+						extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation: "existing-timestamp",
 					},
 				),
 				{namespace: "namespace1", name: "deployment1"}: createDeploymentWithNameAndAnnotations(
@@ -348,8 +348,8 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 						{Name: extensionsv1.OpenFgaAuthModelIdEnv, Value: "auth-model-id"},
 					},
 					map[string]string{
-						extensionsv1.FgaAuthIdUpdatedAtAnnotation: reconcileTimestampFormatted,
-						extensionsv1.FgaAuthModelVersionLabel:     "1.2.3",
+						extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation: reconcileTimestampFormatted,
+						extensionsv1.OpenFgaAuthModelVersionLabel:     "1.2.3",
 					},
 				),
 			},
