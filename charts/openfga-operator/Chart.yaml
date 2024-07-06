@@ -5,5 +5,5 @@ description: |
   The OpenFGA Operator manages and automates the deployment, 
   scaling, and maintenance of OpenFGA instances.
 type: application
-version: 0.1.0-9817733135
+version: 0.1.0-9817780624
 appVersion: "0.1.0"
