@@ -69,8 +69,6 @@ jobs:
   #       run: make docker-build docker-push IMG=${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
 
   update-helm:
-    permissions:
-      contents: write
     runs-on: ubuntu-22.04
     # if: github.ref == 'refs/heads/main'
     # needs:
