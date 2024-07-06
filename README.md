@@ -391,7 +391,7 @@ helm search repo fga --devel
 
 Install the Chart:
 ```sh
-helm install fga-operator fga-operator/fga-operator --version 0.1.0-9818426264
+helm install fga-operator fga-operator/fga-operator --version <CHOOSE_VERSION>
 ```
 
 Verify Installation:
@@ -404,6 +404,6 @@ The helm chart can be added as a chart dependency in `Chart.yaml`:
 ...
 dependencies:
 - name: fga-operator
-  version: "0.1.0-<SOME_VERSION>"
+  version: "<CHOOSE_VERSION>"
   repository: https://3schwartz.github.io/fga-operator/
 ```
