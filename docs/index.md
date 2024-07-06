@@ -373,20 +373,25 @@ spec:
         name: main
 ```
 
-## Installation
+## Installation using Helm
 
 To install the Helm chart for fga-operator, follow the steps below:
 
 Add Helm Repository:
 
 ```sh
-helm repo add fga-operator https://github.com/3schwartz/fga-operator/releases/download/fga-operator-0.1.0-9818426264/
+helm repo add fga-operator https://3schwartz.github.io/fga-operator/
 helm repo update
+```
+
+Search for the chart
+```sh
+helm search repo fga --devel
 ```
 
 Install the Chart:
 ```sh
-helm install my-fga-operator fga-operator/fga-operator --version 0.1.0-9818426264
+helm install fga-operator fga-operator/fga-operator --version 0.1.0-9818426264
 ```
 
 Verify Installation:
@@ -394,4 +399,11 @@ Verify Installation:
 helm list
 ```
 
-This will install the fga-operator Helm chart into your Kubernetes cluster. Ensure that your cluster is properly configured to pull images from the specified repository and that you have the necessary permissions to deploy Helm charts.
+The helm chart can be added as a chart dependency in `Chart.yaml`:
+```
+...
+dependencies:
+- name: fga-operator
+  version: "0.1.0-<SOME_VERSION>"
+  repository: https://3schwartz.github.io/fga-operator/
+```
