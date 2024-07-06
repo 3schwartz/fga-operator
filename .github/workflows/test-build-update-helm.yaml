@@ -68,7 +68,7 @@ jobs:
         working-directory: ./operator
         run: make docker-build docker-push IMG=${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
 
-  update-helm:
+  helm-update:
     runs-on: ubuntu-22.04
     if: github.ref == 'refs/heads/main'
     needs:
@@ -104,6 +104,46 @@ jobs:
       - name: Push changes
         run: |
           git push origin HEAD:${{ env.BRANCH }}
+
+  helm-release:
+    runs-on: ubuntu-22.04
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    needs:
+      - helm-update
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge main into gh-pages
+        run: |
+          git checkout main
+          git pull origin main
+
+          git checkout gh-pages
+          git pull origin gh-pages
+
+          git merge origin/main
+          
+          git checkout main
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.6.0
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"          
 
   scan-image:
     permissions:
