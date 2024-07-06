@@ -54,7 +54,7 @@ func updateAuthorizationModelIdOnDeployment(
 		}
 
 		deployment.Annotations[extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation] = reconcileTimestamp.UTC().Format(time.RFC3339)
-		deployment.Annotations[extensionsv1.OpenFgaAuthModelVersionLabel] = authInstance.Version
+		deployment.Annotations[extensionsv1.OpenFgaAuthModelVersionLabel] = authInstance.Version.String()
 
 		updates[deploymentIdentifier] = deployment
 	}

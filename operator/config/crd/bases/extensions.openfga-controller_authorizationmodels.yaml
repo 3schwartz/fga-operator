@@ -40,28 +40,31 @@ spec:
           spec:
             description: AuthorizationModelSpec defines the desired state of AuthorizationModel
             properties:
-              authorizationModel:
-                type: string
-              instance:
-                properties:
-                  createdAt:
-                    format: date-time
-                    type: string
-                  id:
-                    type: string
-                  version:
-                    type: string
-                type: object
-              latestModels:
+              instances:
+                description: 'Important: Run "make" to regenerate code after modifying
+                  this file'
                 items:
                   properties:
+                    authorizationModel:
+                      type: string
                     createdAt:
                       format: date-time
                       type: string
                     id:
                       type: string
                     version:
-                      type: string
+                      properties:
+                        major:
+                          type: integer
+                        minor:
+                          type: integer
+                        patch:
+                          type: integer
+                      required:
+                      - major
+                      - minor
+                      - patch
+                      type: object
                   type: object
                 type: array
             type: object

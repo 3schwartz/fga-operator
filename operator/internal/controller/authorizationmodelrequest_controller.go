@@ -127,24 +127,40 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	reconcileTimestamp time.Time,
 	log *logr.Logger) error {
 
-	if authorizationModelRequest.Spec.Version == authorizationModel.Spec.Instance.Version &&
-		authorizationModelRequest.Spec.AuthorizationModel == authorizationModel.Spec.AuthorizationModel {
+	missingInstances := make([]extensionsv1.AuthorizationModelRequestInstance, 0)
+	existingVersions := make(map[extensionsv1.ModelVersion]struct{})
+
+	for _, modelExisting := range authorizationModel.Spec.Instances {
+		existingVersions[modelExisting.Version] = struct{}{}
+	}
+
+	for _, modelRequest := range authorizationModelRequest.Spec.Instances {
+		if _, exists := existingVersions[modelRequest.Version]; !exists {
+			missingInstances = append(missingInstances, modelRequest)
+		}
+	}
+
+	if len(missingInstances) == 0 {
 		return nil
 	}
 
-	authModelId, err := openFgaService.CreateAuthorizationModel(ctx, authorizationModelRequest, log)
-	if err != nil {
-		return err
+	modelInstances := authorizationModel.Spec.Instances
+	for _, modelRequestInstance := range missingInstances {
+		authModelId, err := openFgaService.CreateAuthorizationModel(ctx, modelRequestInstance.AuthorizationModel, log)
+		if err != nil {
+			return err
+		}
+		log.V(0).Info("Applied version %s for model %s", modelRequestInstance.Version, authorizationModel.Name)
+		modelInstances = append(modelInstances, extensionsv1.AuthorizationModelInstance{
+			Id:                 authModelId,
+			AuthorizationModel: modelRequestInstance.AuthorizationModel,
+			Version:            modelRequestInstance.Version,
+			CreatedAt:          &metav1.Time{Time: reconcileTimestamp},
+		})
 	}
 
-	authorizationModel.Spec.LatestModels = append(authorizationModel.Spec.LatestModels, authorizationModel.Spec.Instance)
-	authorizationModel.Spec.AuthorizationModel = authorizationModelRequest.Spec.AuthorizationModel
-	authorizationModel.Spec.Instance = extensionsv1.AuthorizationModelInstance{
-		Id:        authModelId,
-		Version:   authorizationModelRequest.Spec.Version,
-		CreatedAt: &metav1.Time{Time: reconcileTimestamp},
-	}
-	if err = r.Update(ctx, authorizationModel); err != nil {
+	authorizationModel.Spec.Instances = modelInstances
+	if err := r.Update(ctx, authorizationModel); err != nil {
 		log.Error(err, "unable to update authorization model in Kubernetes", "authorizationModel", authorizationModel)
 		return err
 	}
@@ -173,9 +189,9 @@ func (r *AuthorizationModelRequestReconciler) getAuthorizationModel(
 			return nil, err
 		}
 	}
-	if err = openFgaService.SetAuthorizationModelId(authorizationModel.Spec.Instance.Id); err != nil {
-		return nil, err
-	}
+	//if err = openFgaService.SetAuthorizationModelId(authorizationModel.Spec.Instance.Id); err != nil {
+	//	return nil, err
+	//} TODO: Don't think it is needed since relation isn't created?
 	return authorizationModel, nil
 }
 
@@ -187,12 +203,16 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 	reconcileTimestamp time.Time,
 	log *logr.Logger) (*extensionsv1.AuthorizationModel, error) {
 
-	authModelId, err := openFgaService.CreateAuthorizationModel(ctx, authorizationModelRequest, log)
-	if err != nil {
-		return nil, err
+	definitions := make([]extensionsv1.AuthorizationModelDefinition, len(authorizationModelRequest.Spec.Instances))
+	for i, instance := range authorizationModelRequest.Spec.Instances {
+		authModelId, err := openFgaService.CreateAuthorizationModel(ctx, instance.AuthorizationModel, log)
+		if err != nil {
+			return nil, err
+		}
+		definitions[i] = extensionsv1.NewAuthorizationModelDefinition(authModelId, instance.AuthorizationModel, instance.Version)
 	}
 
-	authorizationModel := extensionsv1.NewAuthorizationModel(req.Name, req.Namespace, authModelId, authorizationModelRequest.Spec.Version, authorizationModelRequest.Spec.AuthorizationModel, reconcileTimestamp)
+	authorizationModel := extensionsv1.NewAuthorizationModel(req.Name, req.Namespace, definitions, reconcileTimestamp)
 
 	if err := ctrl.SetControllerReference(authorizationModelRequest, &authorizationModel, r.Scheme); err != nil {
 		return nil, err

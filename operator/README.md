@@ -5,7 +5,7 @@
 
 Start OpenFGA
 ```
-cd hosting
+cd hosting/docker-comopse
 docker-compose up
 ```
 
