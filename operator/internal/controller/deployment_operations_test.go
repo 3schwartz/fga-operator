@@ -22,8 +22,12 @@ func (m *MockAuthorizationModel) GetVersionFromDeployment(deployment appsV1.Depl
 		return extensionsv1.AuthorizationModelInstance{}, errors.New("mock error")
 	}
 	return extensionsv1.AuthorizationModelInstance{
-		Id:      "auth-model-id",
-		Version: "v1",
+		Id: "auth-model-id",
+		Version: extensionsv1.ModelVersion{
+			Major: 1,
+			Minor: 2,
+			Patch: 3,
+		},
 	}, nil
 }
 
