@@ -5,5 +5,5 @@ description: |
   The operator manages and automates the deployment, 
   scaling, and maintenance of OpenFGA instances.
 type: application
-version: 0.1.0-9818426264
+version: 0.1.0-9819523567
 appVersion: "0.1.0"
