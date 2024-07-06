@@ -1,4 +1,4 @@
-# OpenFGA Controller Documentation
+# OpenFGA Operator Documentation
 
 This documentation helps you deploy an authorization model and ensures your deployments stay in sync with the latest authorization model from OpenFGA. The OpenFGA controller automates the synchronization between your deployments and the authorization models.
 
