@@ -8,7 +8,7 @@ metadata:
   name: authorizationmodel-editor-role
 rules:
 - apiGroups:
-  - extensions.openfga-controller
+  - extensions.fga-controller
   resources:
   - authorizationmodels
   verbs:
@@ -20,7 +20,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - extensions.openfga-controller
+  - extensions.fga-controller
   resources:
   - authorizationmodels/status
   verbs:

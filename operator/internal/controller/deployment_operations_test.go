@@ -6,8 +6,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"testing"
 
+	extensionsv1 "fga-controller/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	extensionsv1 "openfga-controller/api/v1"
 	"time"
 
 	"github.com/google/go-cmp/cmp"

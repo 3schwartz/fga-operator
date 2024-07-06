@@ -1,6 +1,6 @@
-# OpenFGA Controller Documentation
+# FGA Operator Documentation
 
-This documentation helps you deploy an authorization model and ensures your deployments stay in sync with the latest authorization model from OpenFGA. The OpenFGA controller automates the synchronization between your deployments and the authorization models.
+This documentation helps you deploy an OpenFGA authorization model and ensures your deployments stay in sync with the latest authorization model from OpenFGA. The FGA operator automates the synchronization between your deployments and the authorization models.
 
 ## Steps
 
@@ -9,7 +9,7 @@ This documentation helps you deploy an authorization model and ensures your depl
 Make an authorization request:
 
 ```yaml
-apiVersion: extensions.openfga-controller/v1
+apiVersion: extensions.fga-operator/v1
 kind: AuthorizationModelRequest
 metadata:
   name: documents
@@ -37,7 +37,7 @@ This request will:
 - Create a Kubernetes resource `Store`.
 
 ```yaml
-apiVersion: extensions.openfga-controller/v1
+apiVersion: extensions.fga-operator/v1
 kind: Store
 metadata:
   labels:
@@ -45,7 +45,7 @@ metadata:
   name: documents
   namespace: default
   ownerReferences:
-  - apiVersion: extensions.openfga-controller/v1
+  - apiVersion: extensions.fga-operator/v1
     blockOwnerDeletion: true
     controller: true
     kind: AuthorizationModelRequest
@@ -60,7 +60,7 @@ spec:
 - Save the authorization model ID in a Kubernetes resource `AuthorizationModel`.
 
 ```yaml
-apiVersion: extensions.openfga-controller/v1
+apiVersion: extensions.fga-operator/v1
 kind: AuthorizationModel
 metadata:
   labels:
@@ -68,7 +68,7 @@ metadata:
   name: documents
   namespace: default
   ownerReferences:
-  - apiVersion: extensions.openfga-controller/v1
+  - apiVersion: extensions.fga-operator/v1
     blockOwnerDeletion: true
     controller: true
     kind: AuthorizationModelRequest
@@ -104,7 +104,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    openfga-store: documents
+    fga-store: documents
     app: annotated-curl
   name: annotated-curl
 spec:
@@ -166,7 +166,7 @@ spec:
 To update the authorization model, make a request like below. The important part is setting a new version since this is what the controller compares.
 
 ```yaml
-apiVersion: extensions.openfga-controller/v1
+apiVersion: extensions.fga-operator/v1
 kind: AuthorizationModelRequest
 metadata:
   name: documents
@@ -208,7 +208,7 @@ spec:
 The controller will call OpenFGA and create the new authorization model. The controller will update the AuthorizationModel with the new reference.
 
 ```yaml
-apiVersion: extensions.openfga-controller/v1
+apiVersion: extensions.fga-operator/v1
 kind: AuthorizationModel
 metadata:
   creationTimestamp: "2024-07-06T06:44:25Z"
@@ -218,7 +218,7 @@ metadata:
   name: documents
   namespace: default
   ownerReferences:
-  - apiVersion: extensions.openfga-controller/v1
+  - apiVersion: extensions.fga-operator/v1
     blockOwnerDeletion: true
     controller: true
     kind: AuthorizationModelRequest

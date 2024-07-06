@@ -5,7 +5,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - extensions.openfga-controller
+  - extensions.fga-controller
   resources:
   - authorizationmodelrequests
   verbs:
@@ -17,13 +17,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - extensions.openfga-controller
+  - extensions.fga-controller
   resources:
   - authorizationmodelrequests/finalizers
   verbs:
   - update
 - apiGroups:
-  - extensions.openfga-controller
+  - extensions.fga-controller
   resources:
   - authorizationmodelrequests/status
   verbs:

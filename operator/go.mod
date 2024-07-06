@@ -1,4 +1,4 @@
-module openfga-controller
+module fga-controller
 
 go 1.21.9
 

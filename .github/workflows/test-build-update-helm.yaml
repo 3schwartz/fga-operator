@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths-ignore:
-      - 'charts/openfga-operator/values.yaml'
-      - 'charts/openfga-operator/Chart.yaml'      
+      - 'charts/fga-operator/values.yaml'
+      - 'charts/fga-operator/Chart.yaml'      
   pull_request:
     branches:
       - main
@@ -91,15 +91,15 @@ jobs:
 
       - name: Update values.yaml
         run: |
-          sed -i 's/tag: .*/tag: ${{ github.run_id }}/' charts/openfga-operator/values.yaml
+          sed -i 's/tag: .*/tag: ${{ github.run_id }}/' charts/fga-operator/values.yaml
 
       - name: Update Chart.yaml version
         run: |
-          sed -i -E 's/(version: [0-9]+\.[0-9]+\.[0-9]+).*/\1-${{ github.run_id }}/' charts/openfga-operator/Chart.yaml
+          sed -i -E 's/(version: [0-9]+\.[0-9]+\.[0-9]+).*/\1-${{ github.run_id }}/' charts/fga-operator/Chart.yaml
 
       - name: Commit updated files
         run: |
-          git add charts/openfga-operator/values.yaml charts/openfga-operator/Chart.yaml
+          git add charts/fga-operator/values.yaml charts/fga-operator/Chart.yaml
           git commit -m "Update controllerManager.image.tag and chart version to ${{ github.run_id }}"
 
       - name: Push changes

@@ -4,20 +4,21 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-  name: stores.extensions.openfga-controller
+  name: authorizationmodels.extensions.fga-controller
 spec:
-  group: extensions.openfga-controller
+  group: extensions.fga-controller
   names:
-    kind: Store
-    listKind: StoreList
-    plural: stores
-    singular: store
+    kind: AuthorizationModel
+    listKind: AuthorizationModelList
+    plural: authorizationmodels
+    singular: authorizationmodel
   scope: Namespaced
   versions:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: Store is the Schema for the stores API
+        description: AuthorizationModel is the Schema for the authorizationmodels
+          API
         properties:
           apiVersion:
             description: |-
@@ -37,19 +38,36 @@ spec:
           metadata:
             type: object
           spec:
-            description: StoreSpec defines the desired state of Store
+            description: AuthorizationModelSpec defines the desired state of AuthorizationModel
             properties:
-              id:
-                description: Identification which is given by OpenFGA when the Store
-                  is created
-                type: string
+              instances:
+                items:
+                  properties:
+                    authorizationModel:
+                      type: string
+                    createdAt:
+                      format: date-time
+                      type: string
+                    id:
+                      type: string
+                    version:
+                      properties:
+                        major:
+                          type: integer
+                        minor:
+                          type: integer
+                        patch:
+                          type: integer
+                      required:
+                      - major
+                      - minor
+                      - patch
+                      type: object
+                  type: object
+                type: array
             type: object
           status:
-            description: StoreStatus defines the observed state of Store
-            properties:
-              createdAt:
-                format: date-time
-                type: string
+            description: AuthorizationModelStatus defines the observed state of AuthorizationModel
             type: object
         type: object
     served: true

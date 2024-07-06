@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "openfga-operator.name" -}}
+{{- define "fga-operator.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "openfga-operator.fullname" -}}
+{{- define "fga-operator.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "openfga-operator.chart" -}}
+{{- define "fga-operator.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "openfga-operator.labels" -}}
-helm.sh/chart: {{ include "openfga-operator.chart" . }}
-{{ include "openfga-operator.selectorLabels" . }}
+{{- define "fga-operator.labels" -}}
+helm.sh/chart: {{ include "fga-operator.chart" . }}
+{{ include "fga-operator.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "openfga-operator.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "openfga-operator.name" . }}
+{{- define "fga-operator.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "fga-operator.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "openfga-operator.serviceAccountName" -}}
+{{- define "fga-operator.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "openfga-operator.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "fga-operator.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

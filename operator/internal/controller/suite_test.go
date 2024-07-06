@@ -18,10 +18,10 @@ package controller
 
 import (
 	"context"
+	fgainternal "fga-controller/internal/openfga"
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"k8s.io/utils/clock"
-	openfgainternal "openfga-controller/internal/openfga"
 	"path/filepath"
 	"runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,7 +38,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	extensionsv1 "openfga-controller/api/v1"
+	extensionsv1 "fga-controller/api/v1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -132,10 +132,10 @@ var _ = AfterSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 })
 
-func setupMockFactory() openfgainternal.PermissionServiceFactory {
-	mockFactory := openfgainternal.NewMockPermissionServiceFactory(goMockController)
-	mockService := openfgainternal.NewMockPermissionService(goMockController)
-	store := openfgainternal.Store{
+func setupMockFactory() fgainternal.PermissionServiceFactory {
+	mockFactory := fgainternal.NewMockPermissionServiceFactory(goMockController)
+	mockService := fgainternal.NewMockPermissionService(goMockController)
+	store := fgainternal.Store{
 		Id:        "foo",
 		Name:      resourceName,
 		CreatedAt: time.Now(),
