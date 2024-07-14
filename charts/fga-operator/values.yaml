@@ -1,9 +1,16 @@
 # Configuration for the FGA Operator Controller Manager
 controllerManager:
   # URL of the OpenFGA API
-  openFgaUrl: 'http://openfga.default.svc.cluster.local:8080'
+  openFgaUrlEnvVar: 'http://openfga.default.svc.cluster.local:8080'
   # API token for accessing the OpenFGA API using preshared keys.
-  openFgaApiToken: foobar
+  openFgaApiTokenEnvVar: foobar
+
+  # Secret which contains URL of the OpenFGA API
+  # Secret should have key OPENFGA_API_URL
+  openFgaUrlFromSecret: fgaSecret
+  # Secret which contains API token for accessing the OpenFGA API using preshared keys.
+  # Secret should have key OPENFGA_API_TOKEN
+  openFgaApiTokenFromSecret: fgaSecret
   
   manager:
     # Arguments to pass to the controller manager
