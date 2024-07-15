@@ -26,10 +26,26 @@ spec:
         env:
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: {{ quote .Values.kubernetesClusterDomain }}
+        {{- if .Values.controllerManager.openFgaUrlEnvVar }}
         - name: OPENFGA_API_URL
-          value: {{ .Values.controllerManager.openFgaUrl }}
+          value: {{ .Values.controllerManager.openFgaUrlEnvVar }}
+        {{- else if .Values.controllerManager.openFgaUrlFromSecret }}
+        - name: OPENFGA_API_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.controllerManager.openFgaUrlFromSecret }}
+              key: OPENFGA_API_URL
+        {{- end }}
+        {{- if .Values.controllerManager.openFgaApiTokenEnvVar }}
         - name: OPENFGA_API_TOKEN
-          value: {{ .Values.controllerManager.openFgaApiToken }}
+          value: {{ .Values.controllerManager.openFgaApiTokenEnvVar }}
+        {{- else if .Values.controllerManager.openFgaApiTokenFromSecret }}
+        - name: OPENFGA_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.controllerManager.openFgaApiTokenFromSecret }}
+              key: OPENFGA_API_TOKEN
+        {{- end }}
         {{- with .Values.controllerManager.extraEnvVars }}
             {{- toYaml . | nindent 8 }}
         {{- end }}

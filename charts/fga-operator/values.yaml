@@ -1,9 +1,24 @@
 # Configuration for the FGA Operator Controller Manager
 controllerManager:
   # URL of the OpenFGA API
-  openFgaUrl: 'http://openfga.default.svc.cluster.local:8080'
+  # If openFgaUrlEnvVar is defined, it will be used as the value for the OPENFGA_API_URL environment variable.
+  # If openFgaUrlEnvVar is not defined but openFgaUrlFromSecret is defined, the value from the specified secret (key: OPENFGA_API_URL) will be used.
+  openFgaUrlEnvVar: 'http://openfga.default.svc.cluster.local:8080'
+  
   # API token for accessing the OpenFGA API using preshared keys.
-  openFgaApiToken: foobar
+  # If openFgaApiTokenEnvVar is defined, it will be used as the value for the OPENFGA_API_TOKEN environment variable.
+  # If openFgaApiTokenEnvVar is not defined but openFgaApiTokenFromSecret is defined, the value from the specified secret (key: OPENFGA_API_TOKEN) will be used.
+  openFgaApiTokenEnvVar: foobar
+
+  # Secret which contains URL of the OpenFGA API
+  # Secret should have key OPENFGA_API_URL
+  # If openFgaUrlEnvVar is not defined but openFgaUrlFromSecret is defined, the value from the specified secret (key: OPENFGA_API_URL) will be used.
+  # openFgaUrlFromSecret: fgaSecret
+  
+  # Secret which contains API token for accessing the OpenFGA API using preshared keys.
+  # Secret should have key OPENFGA_API_TOKEN
+  # If openFgaApiTokenEnvVar is not defined but openFgaApiTokenFromSecret is defined, the value from the specified secret (key: OPENFGA_API_TOKEN) will be used.
+  # openFgaApiTokenFromSecret: fgaSecret
   
   manager:
     # Arguments to pass to the controller manager
@@ -23,7 +38,7 @@ controllerManager:
     # Image configuration for the controller manager
     image:
       repository: ghcr.io/3schwartz/fga-operator
-      tag: "9820808567"
+      tag: "9934410705"
       
     # Resource requests and limits for the controller manager container
     resources:

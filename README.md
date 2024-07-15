@@ -104,7 +104,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    fga-store: documents
+    openfga-store: documents
     app: annotated-curl
   name: annotated-curl
 spec:
