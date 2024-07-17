@@ -18,7 +18,7 @@ package controller
 
 import (
 	"context"
-	"fga-controller/internal/openfga"
+	"fga-operator/internal/openfga"
 	"fmt"
 	"github.com/go-logr/logr"
 	appsV1 "k8s.io/api/apps/v1"
@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	extensionsv1 "fga-controller/api/v1"
+	extensionsv1 "fga-operator/api/v1"
 )
 
 // AuthorizationModelRequestReconciler reconciles a AuthorizationModelRequest object
@@ -50,9 +50,9 @@ type Clock interface {
 
 const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
 
-//+kubebuilder:rbac:groups=extensions.fga-controller,resources=authorizationmodelrequests,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=extensions.fga-controller,resources=authorizationmodelrequests/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=extensions.fga-controller,resources=authorizationmodelrequests/finalizers,verbs=update
+//+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodelrequests,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodelrequests/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodelrequests/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

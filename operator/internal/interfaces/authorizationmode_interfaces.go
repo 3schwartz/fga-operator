@@ -1,7 +1,7 @@
 package interfaces
 
 import (
-	v12 "fga-controller/api/v1"
+	v12 "fga-operator/api/v1"
 	v1 "k8s.io/api/apps/v1"
 )
 

@@ -2,35 +2,35 @@
 # This file is used to track the info used to scaffold your project
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
-domain: fga-controller
+domain: fga-operator
 layout:
 - go.kubebuilder.io/v4
 projectName: operator
-repo: fga-controller
+repo: fga-operator
 resources:
 - api:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: fga-controller
+  domain: fga-operator
   group: extensions
   kind: AuthorizationModelRequest
-  path: fga-controller/api/v1
+  path: fga-operator/api/v1
   version: v1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: fga-controller
+  domain: fga-operator
   group: extensions
   kind: AuthorizationModel
-  path: fga-controller/api/v1
+  path: fga-operator/api/v1
   version: v1
 - api:
     crdVersion: v1
     namespaced: true
-  domain: fga-controller
+  domain: fga-operator
   group: extensions
   kind: Store
-  path: fga-controller/api/v1
+  path: fga-operator/api/v1
   version: v1
 version: "3"

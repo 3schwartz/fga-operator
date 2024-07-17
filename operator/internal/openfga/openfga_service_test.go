@@ -2,7 +2,7 @@ package openfga
 
 import (
 	"context"
-	v1 "fga-controller/api/v1"
+	v1 "fga-operator/api/v1"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/log"

@@ -17,8 +17,8 @@ limitations under the License.
 package controller
 
 import (
-	extensionsv1 "fga-controller/api/v1"
-	fgainternal "fga-controller/internal/openfga"
+	extensionsv1 "fga-operator/api/v1"
+	fgainternal "fga-operator/internal/openfga"
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
