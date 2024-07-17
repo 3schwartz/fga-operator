@@ -8,7 +8,7 @@ metadata:
   name: authorizationmodel-viewer-role
 rules:
 - apiGroups:
-  - extensions.fga-controller
+  - extensions.fga-operator
   resources:
   - authorizationmodels
   verbs:
@@ -16,7 +16,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - extensions.fga-controller
+  - extensions.fga-operator
   resources:
   - authorizationmodels/status
   verbs:

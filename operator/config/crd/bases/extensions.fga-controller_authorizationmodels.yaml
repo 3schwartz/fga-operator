@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.14.0
-  name: authorizationmodels.extensions.fga-controller
+  name: authorizationmodels.extensions.fga-operator
 spec:
-  group: extensions.fga-controller
+  group: extensions.fga-operator
   names:
     kind: AuthorizationModel
     listKind: AuthorizationModelList

@@ -18,7 +18,7 @@ package main
 
 import (
 	"crypto/tls"
-	"fga-controller/internal/openfga"
+	"fga-operator/internal/openfga"
 	"flag"
 	"os"
 
@@ -35,8 +35,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	extensionsv1 "fga-controller/api/v1"
-	"fga-controller/internal/controller"
+	extensionsv1 "fga-operator/api/v1"
+	"fga-operator/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -105,7 +105,7 @@ func main() {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "c18cdd98.fga-controller",
+		LeaderElectionID:       "c18cdd98.fga-operator",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly

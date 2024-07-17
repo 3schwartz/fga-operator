@@ -18,7 +18,7 @@ package controller
 
 import (
 	"context"
-	fgainternal "fga-controller/internal/openfga"
+	fgainternal "fga-operator/internal/openfga"
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"k8s.io/utils/clock"
@@ -38,7 +38,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	extensionsv1 "fga-controller/api/v1"
+	extensionsv1 "fga-operator/api/v1"
 	//+kubebuilder:scaffold:imports
 )
 

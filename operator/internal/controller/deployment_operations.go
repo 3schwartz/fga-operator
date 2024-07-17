@@ -1,8 +1,8 @@
 package controller
 
 import (
-	extensionsv1 "fga-controller/api/v1"
-	"fga-controller/internal/interfaces"
+	extensionsv1 "fga-operator/api/v1"
+	"fga-operator/internal/interfaces"
 	"github.com/go-logr/logr"
 	appsV1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

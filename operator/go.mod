@@ -1,4 +1,4 @@
-module fga-controller
+module fga-operator
 
 go 1.21.9
 
