@@ -29,7 +29,8 @@ spec:
         {{- if .Values.controllerManager.openFgaUrlEnvVar }}
         - name: OPENFGA_API_URL
           value: {{ .Values.controllerManager.openFgaUrlEnvVar }}
-        {{- else if .Values.controllerManager.openFgaUrlFromSecret }}
+        {{- end }}
+        {{- if .Values.controllerManager.openFgaUrlFromSecret }}
         - name: OPENFGA_API_URL
           valueFrom:
             secretKeyRef:
@@ -39,7 +40,8 @@ spec:
         {{- if .Values.controllerManager.openFgaApiTokenEnvVar }}
         - name: OPENFGA_API_TOKEN
           value: {{ .Values.controllerManager.openFgaApiTokenEnvVar }}
-        {{- else if .Values.controllerManager.openFgaApiTokenFromSecret }}
+        {{- end }}  
+        {{- if .Values.controllerManager.openFgaApiTokenFromSecret }}
         - name: OPENFGA_API_TOKEN
           valueFrom:
             secretKeyRef:
