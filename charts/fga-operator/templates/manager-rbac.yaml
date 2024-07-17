@@ -6,7 +6,7 @@ metadata:
   {{- include "fga-operator.labels" . | nindent 4 }}
 rules:
 - apiGroups:
-  - extensions.fga-controller
+  - extensions.fga-operator
   resources:
   - authorizationmodelrequests
   verbs:
@@ -18,13 +18,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - extensions.fga-controller
+  - extensions.fga-operator
   resources:
   - authorizationmodelrequests/finalizers
   verbs:
   - update
 - apiGroups:
-  - extensions.fga-controller
+  - extensions.fga-operator
   resources:
   - authorizationmodelrequests/status
   verbs:
