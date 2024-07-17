@@ -6,7 +6,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"testing"
 
-	extensionsv1 "fga-controller/api/v1"
+	extensionsv1 "fga-operator/api/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 
