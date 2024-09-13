@@ -44,6 +44,7 @@ type AuthorizationModelRequestReconciler struct {
 	openfga.PermissionServiceFactory
 	openfga.Config
 	Clock
+	RequeueAfter *time.Duration
 }
 
 type Clock interface {
@@ -66,7 +67,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	logger.Info("Reconciliation triggered")
 	reconcileTimestamp := r.Now()
 
-	requeueResult := ctrl.Result{RequeueAfter: 45 * time.Second}
+	requeueResult := ctrl.Result{RequeueAfter: *r.RequeueAfter}
 
 	authorizationRequest := &extensionsv1.AuthorizationModelRequest{}
 	if err := r.Get(ctx, req.NamespacedName, authorizationRequest); err != nil {
@@ -76,27 +77,27 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 
 	openFgaService, err := r.PermissionServiceFactory.GetService(r.Config)
 	if err != nil {
-		return requeueResult, err
+		return ctrl.Result{}, err
 	}
 
 	store, err := r.getStore(ctx, req, openFgaService, authorizationRequest, &logger)
 	if err != nil {
-		return requeueResult, err
+		return ctrl.Result{}, err
 	}
 
 	authorizationModel, err := r.getAuthorizationModel(ctx, req, openFgaService, authorizationRequest, reconcileTimestamp, &logger)
 	if err != nil {
-		return requeueResult, err
+		return ctrl.Result{}, err
 	}
 
 	if err = r.updateAuthorizationModel(ctx, openFgaService, authorizationRequest, authorizationModel, reconcileTimestamp, &logger); err != nil {
-		return requeueResult, err
+		return ctrl.Result{}, err
 	}
 
 	var deployments appsV1.DeploymentList
 	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingFields{deploymentIndexKey: store.Name}); err != nil {
 		logger.Error(err, "unable to list deployments")
-		return requeueResult, err
+		return ctrl.Result{}, err
 	}
 
 	updates := updateStoreIdOnDeployments(deployments, store, reconcileTimestamp)

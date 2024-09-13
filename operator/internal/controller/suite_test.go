@@ -107,11 +107,13 @@ var _ = BeforeSuite(func() {
 
 	goMockController = gomock.NewController(GinkgoT())
 
+	requeueAfter := 45 * time.Second
 	controllerReconciler = &AuthorizationModelRequestReconciler{
 		Client:                   k8sManager.GetClient(),
 		Scheme:                   k8sManager.GetScheme(),
 		PermissionServiceFactory: setupMockFactory(),
 		Clock:                    clock.RealClock{},
+		RequeueAfter:             &requeueAfter,
 	}
 
 	err = controllerReconciler.SetupWithManager(k8sManager)

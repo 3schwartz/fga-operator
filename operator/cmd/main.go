@@ -21,6 +21,7 @@ import (
 	"fga-operator/internal/openfga"
 	"flag"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -128,11 +129,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	requeueAfter := getRequeueAfterFromEnv()
 	if err = (&controller.AuthorizationModelRequestReconciler{
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
 		PermissionServiceFactory: openfga.OpenFgaServiceFactory{},
 		Config:                   config,
+		RequeueAfter:             &requeueAfter,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AuthorizationModelRequest")
 		os.Exit(1)
@@ -153,4 +156,23 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func getRequeueAfterFromEnv() time.Duration {
+	defaultDuration := 45 * time.Second
+	requeueAfterStr := os.Getenv("REQUEUE_AFTER")
+
+	if requeueAfterStr == "" {
+		setupLog.Info("REQUEUE_AFTER not set, using default", "defaultDuration", defaultDuration)
+		return defaultDuration
+	}
+
+	requeueAfter, err := time.ParseDuration(requeueAfterStr)
+	if err != nil {
+		setupLog.Error(err, "Invalid REQUEUE_AFTER value, using default", "requeueAfterStr", requeueAfterStr, "defaultDuration", defaultDuration)
+		return defaultDuration
+	}
+
+	setupLog.Info("Using REQUEUE_AFTER from environment", "requeueAfter", requeueAfter)
+	return requeueAfter
 }
