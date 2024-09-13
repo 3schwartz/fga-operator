@@ -13,6 +13,7 @@ require (
 	github.com/onsi/gomega v1.30.0
 	github.com/openfga/go-sdk v0.3.7
 	github.com/openfga/language/pkg/go v0.0.0-20240513164614-7d0da9bc9c63
+	github.com/prometheus/client_golang v1.19.0
 	k8s.io/api v0.29.2
 	k8s.io/apimachinery v0.29.2
 	k8s.io/client-go v0.29.2
@@ -53,7 +54,6 @@ require (
 	github.com/openfga/api/proto v0.0.0-20240430203311-36050418a284 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_golang v1.19.0 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.53.0 // indirect
 	github.com/prometheus/procfs v0.14.0 // indirect

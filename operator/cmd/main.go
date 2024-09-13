@@ -18,6 +18,7 @@ package main
 
 import (
 	"crypto/tls"
+	"fga-operator/internal/observability"
 	"fga-operator/internal/openfga"
 	"flag"
 	"os"
@@ -147,6 +148,7 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+	observability.InitializeCustomMetrics()
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
