@@ -149,6 +149,10 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				store := &extensionsv1.Store{}
 				return k8sClient.Get(ctx, typeNamespacedName, store)
 			}, duration, interval).Should(Succeed())
+			Eventually(func() error {
+				authModel := &extensionsv1.AuthorizationModel{}
+				return k8sClient.Get(ctx, typeNamespacedName, authModel)
+			}, duration, interval).Should(Succeed())
 		})
 
 		It("given existing store when create store resource then return existing", func() {
