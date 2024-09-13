@@ -5,7 +5,7 @@ Bootstrapped using [Kubebuilder](https://book.kubebuilder.io/introduction.html)
 
 Start OpenFGA
 ```
-cd hosting/docker-comopse
+cd ../development/docker-comopse
 docker-compose up
 ```
 

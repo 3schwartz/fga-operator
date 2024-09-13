@@ -25,6 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/clock"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -61,6 +63,7 @@ const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
+	logger.Info("Reconciliation triggered")
 	reconcileTimestamp := r.Now()
 
 	requeueResult := ctrl.Result{RequeueAfter: 45 * time.Second}
@@ -119,7 +122,7 @@ func (r *AuthorizationModelRequestReconciler) updateDeployment(
 	log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
 }
 
-func updateAuthorizationModelModelMissingInstances(
+func updateAuthorizationModelWithMissingInstances(
 	ctx context.Context,
 	openFgaService openfga.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
@@ -206,7 +209,7 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 	reconcileTimestamp time.Time,
 	log *logr.Logger) error {
 
-	updateMissing, err := updateAuthorizationModelModelMissingInstances(ctx, openFgaService, authorizationModelRequest, authorizationModel, reconcileTimestamp, log)
+	updateMissing, err := updateAuthorizationModelWithMissingInstances(ctx, openFgaService, authorizationModelRequest, authorizationModel, reconcileTimestamp, log)
 	if err != nil {
 		return err
 	}
@@ -271,7 +274,7 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 		return nil, err
 	}
 	if err := r.Create(ctx, &authorizationModel); err != nil {
-		log.Error(err, fmt.Sprintf("Failed to authorization model %s", req.Name))
+		log.Error(err, fmt.Sprintf("Failed to create authorization model %s", req.Name))
 		return nil, err
 	}
 	log.V(0).Info("Created authorization model in Kubernetes", "authorizationModel", authorizationModel)
@@ -349,9 +352,17 @@ func (r *AuthorizationModelRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 		return err
 	}
 
+	deletePredicate := predicate.Funcs{
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if _, ok := e.Object.(*extensionsv1.AuthorizationModelRequest); ok {
+				return false
+			}
+			return true
+		},
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&extensionsv1.AuthorizationModelRequest{}).
-		Owns(&extensionsv1.AuthorizationModel{}).
-		Owns(&extensionsv1.Store{}).
+		WithEventFilter(deletePredicate).
 		Complete(r)
 }
