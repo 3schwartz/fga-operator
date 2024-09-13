@@ -38,7 +38,7 @@ controllerManager:
     # Image configuration for the controller manager
     image:
       repository: ghcr.io/3schwartz/fga-operator
-      tag: "9973354612"
+      tag: "10846222773"
       
     # Resource requests and limits for the controller manager container
     resources:
