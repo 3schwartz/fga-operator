@@ -18,11 +18,10 @@ package main
 
 import (
 	"crypto/tls"
+	"fga-operator/internal/configurations"
 	"fga-operator/internal/openfga"
 	"flag"
 	"os"
-	"time"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -129,7 +128,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	requeueAfter := getRequeueAfterFromEnv()
+	requeueAfter := configurations.GetRequeueAfterFromEnv(setupLog)
 	if err = (&controller.AuthorizationModelRequestReconciler{
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
@@ -156,23 +155,4 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
-}
-
-func getRequeueAfterFromEnv() time.Duration {
-	defaultDuration := 45 * time.Second
-	requeueAfterStr := os.Getenv("REQUEUE_AFTER")
-
-	if requeueAfterStr == "" {
-		setupLog.Info("REQUEUE_AFTER not set, using default", "defaultDuration", defaultDuration)
-		return defaultDuration
-	}
-
-	requeueAfter, err := time.ParseDuration(requeueAfterStr)
-	if err != nil {
-		setupLog.Error(err, "Invalid REQUEUE_AFTER value, using default", "requeueAfterStr", requeueAfterStr, "defaultDuration", defaultDuration)
-		return defaultDuration
-	}
-
-	setupLog.Info("Using REQUEUE_AFTER from environment", "requeueAfter", requeueAfter)
-	return requeueAfter
 }
