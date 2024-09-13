@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fga-operator/internal/observability"
 	"fga-operator/internal/openfga"
 	"fmt"
 	"github.com/go-logr/logr"
@@ -104,7 +105,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	updateAuthorizationModelIdOnDeployment(deployments, updates, authorizationModel, reconcileTimestamp, &logger)
 
 	for _, deployment := range updates {
-		r.updateDeployment(ctx, &deployment, &logger)
+		r.updateDeployment(ctx, &deployment, req.Name, &logger)
 	}
 
 	return requeueResult, nil
@@ -113,12 +114,15 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 func (r *AuthorizationModelRequestReconciler) updateDeployment(
 	ctx context.Context,
 	deployment *appsV1.Deployment,
+	modelName string,
 	log *logr.Logger,
+
 ) {
 	if err := r.Update(ctx, deployment); err != nil {
 		log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
 		return
 	}
+	observability.RecordDeploymentUpdated(deployment.Name, modelName)
 	log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
 }
 
@@ -223,7 +227,7 @@ func (r *AuthorizationModelRequestReconciler) updateAuthorizationModel(
 		log.Error(err, "unable to update authorization model in Kubernetes", "authorizationModel", authorizationModel)
 		return err
 	}
-
+	observability.RecordK8AuthorizationModelEvent(observability.Updated, authorizationModel.Name)
 	log.V(0).Info("Updated authorization model in Kubernetes", "authorizationModel", authorizationModel)
 
 	return nil
@@ -265,6 +269,8 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 		if err != nil {
 			return nil, err
 		}
+		observability.RecordOpenFgaAuthorizationModels(req.Name)
+
 		definitions[i] = extensionsv1.NewAuthorizationModelDefinition(authModelId, instance.AuthorizationModel, instance.Version)
 	}
 
@@ -277,6 +283,7 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 		log.Error(err, fmt.Sprintf("Failed to create authorization model %s", req.Name))
 		return nil, err
 	}
+	observability.RecordK8AuthorizationModelEvent(observability.Created, req.Name)
 	log.V(0).Info("Created authorization model in Kubernetes", "authorizationModel", authorizationModel)
 
 	return &authorizationModel, nil
@@ -317,6 +324,7 @@ func (r *AuthorizationModelRequestReconciler) createStoreResource(
 	}
 	if store == nil {
 		store, err = openFgaService.CreateStore(ctx, req.Name, log)
+		observability.RecordOpenFgaStoreEvent(req.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -330,6 +338,7 @@ func (r *AuthorizationModelRequestReconciler) createStoreResource(
 		log.Error(err, fmt.Sprintf("Failed to create store %s", req.Name))
 		return nil, err
 	}
+	observability.RecordK8StoreEvent(req.Name)
 	log.V(0).Info("Created store in Kubernetes", "storeKubernetes", storeResource)
 
 	return storeResource, nil
@@ -354,7 +363,8 @@ func (r *AuthorizationModelRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	deletePredicate := predicate.Funcs{
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if _, ok := e.Object.(*extensionsv1.AuthorizationModelRequest); ok {
+			if object, ok := e.Object.(*extensionsv1.AuthorizationModelRequest); ok {
+				observability.RecordK8AuthorizationModelEvent(observability.Deleted, object.Name)
 				return false
 			}
 			return true
