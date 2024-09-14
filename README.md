@@ -427,8 +427,8 @@ All command line flags has defaults and hence none of them are mandatory.
 
 ### Environment Variables
 
-| Name                    | Description                                                                                           | Default | Mandatory | Examples                                                              |
-|-------------------------|-------------------------------------------------------------------------------------------------------|---------|-----------|-----------------------------------------------------------------------|
-| OPENFGA_API_URL         | Url to OpenFGA.                                                                                       | -       | Yes       | "http://127.0.0.1:8089", "http://openfga.demo.svc.cluster.local:8080" |
-| OPENFGA_API_TOKEN       | Preshared key used for authentication to OpenFGA.                                                     | -       | Yes       | "foobar", "some_token"                                                |
-| RECONCILIATION_INTERVAL | Time interval between reconciliation loops unless a change to an `AuthorizationModelRequest` is done. | "45s"   | No        | "45s", "5m", "3h"                                                     |
+| Name                    | Description                                                                                                   | Default | Mandatory | Examples                                                              |
+|-------------------------|---------------------------------------------------------------------------------------------------------------|---------|-----------|-----------------------------------------------------------------------|
+| OPENFGA_API_URL         | Url to OpenFGA.                                                                                               | -       | Yes       | "http://127.0.0.1:8089", "http://openfga.demo.svc.cluster.local:8080" |
+| OPENFGA_API_TOKEN       | Preshared key used for authentication to OpenFGA.                                                             | -       | Yes       | "foobar", "some_token"                                                |
+| RECONCILIATION_INTERVAL | The time interval between reconciliation loops, unless an `AuthorizationModelRequest` is created or modified. | "45s"   | No        | "45s", "5m", "3h"                                                     |
