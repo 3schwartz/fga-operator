@@ -410,7 +410,7 @@ dependencies:
 
 ## Configurations
 
-Configurations can be set both using command line flags and environment variables.
+Configurations can be set using either command-line flags or environment variables.
 
 ### Command line flags
 
