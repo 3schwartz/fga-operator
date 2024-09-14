@@ -407,3 +407,28 @@ dependencies:
   version: "<CHOOSE_VERSION>"
   repository: https://3schwartz.github.io/fga-operator/
 ```
+
+## Configurations
+
+Configurations can be set both using command line flags and environment variables.
+
+### Command line flags
+
+All command line flags has defaults and hence none of them are mandatory.
+
+| Name                      | Description                                                                                                                                                                      | Default Image | Default Helm Chart |
+|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|--------------------|
+| metrics-bind-address      | The address the metric endpoint binds to. Setting it to "0" will disable the endpoint.                                                                                           | ":8080"       | 0                  |
+| health-probe-bind-address | The address the probe endpoint binds to.                                                                                                                                         | ":8081"       | 8081               |
+| leader-elect              | Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.                                                            | false         | true               |
+| metrics-secure            | If set the metrics endpoint is served securely.                                                                                                                                  | false         | false              |
+| enable-http2              | If set, HTTP/2 will be enabled for the metrics and webhook servers                                                                                                               | false         | false              |
+| zap-devel                 | configures the logger to use a Zap development config (stacktraces on warnings, no sampling), otherwise a Zap production  config will be used (stacktraces on errors, sampling). | true          | false              |
+
+### Environment Variables
+
+| Name                    | Description                                                                                           | Default | Mandatory | Examples                                                              |
+|-------------------------|-------------------------------------------------------------------------------------------------------|---------|-----------|-----------------------------------------------------------------------|
+| OPENFGA_API_URL         | Url to OpenFGA.                                                                                       | -       | Yes       | "http://127.0.0.1:8089", "http://openfga.demo.svc.cluster.local:8080" |
+| OPENFGA_API_TOKEN       | Preshared key used for authorization to OpenFGA.                                                      | -       | Yes       | "foobar", "some_token"                                                |
+| RECONCILIATION_INTERVAL | Time interval between reconciliation loops unless a change to an `AuthorizationModelRequest` is done. | "45s"   | No        | "45s", "5m", "3h"                                                     |

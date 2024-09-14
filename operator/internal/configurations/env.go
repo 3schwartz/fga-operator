@@ -7,23 +7,23 @@ import (
 	"time"
 )
 
-const RequeueAfterDuration = "REQUEUE_AFTER_DURATION"
+const ReconciliationInterval = "RECONCILIATION_INTERVAL"
 
-func GetRequeueAfterFromEnv(setupLog logr.Logger) time.Duration {
+func GetReconciliationInterval(setupLog logr.Logger) time.Duration {
 	defaultDuration := 45 * time.Second
-	requeueAfterStr := os.Getenv(RequeueAfterDuration)
+	reconciliationInterval := os.Getenv(ReconciliationInterval)
 
-	if requeueAfterStr == "" {
-		setupLog.Info(fmt.Sprintf("%s not set, using default", RequeueAfterDuration), "defaultDuration", defaultDuration)
+	if reconciliationInterval == "" {
+		setupLog.Info(fmt.Sprintf("%s not set, using default", ReconciliationInterval), "defaultDuration", defaultDuration)
 		return defaultDuration
 	}
 
-	requeueAfter, err := time.ParseDuration(requeueAfterStr)
+	requeueAfter, err := time.ParseDuration(reconciliationInterval)
 	if err != nil {
-		setupLog.Error(err, fmt.Sprintf("Invalid %s value, using default", RequeueAfterDuration), "requeueAfterStr", requeueAfterStr, "defaultDuration", defaultDuration)
+		setupLog.Error(err, fmt.Sprintf("Invalid %s value, using default", ReconciliationInterval), "reconciliationInterval", reconciliationInterval, "defaultDuration", defaultDuration)
 		return defaultDuration
 	}
 
-	setupLog.Info(fmt.Sprintf("Using %s from environment", RequeueAfterDuration), "requeueAfter", requeueAfter)
+	setupLog.Info(fmt.Sprintf("Using %s from environment", ReconciliationInterval), "requeueAfter", requeueAfter)
 	return requeueAfter
 }

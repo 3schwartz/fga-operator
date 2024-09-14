@@ -129,7 +129,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	requeueAfter := configurations.GetRequeueAfterFromEnv(setupLog)
+	requeueAfter := configurations.GetReconciliationInterval(setupLog)
 	if err = (&controller.AuthorizationModelRequestReconciler{
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
