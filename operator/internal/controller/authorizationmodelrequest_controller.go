@@ -45,7 +45,7 @@ type AuthorizationModelRequestReconciler struct {
 	openfga.PermissionServiceFactory
 	openfga.Config
 	Clock
-	RequeueAfter *time.Duration
+	ReconciliationInterval *time.Duration
 }
 
 type Clock interface {
@@ -68,7 +68,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	logger.Info("Reconciliation triggered")
 	reconcileTimestamp := r.Now()
 
-	requeueResult := ctrl.Result{RequeueAfter: *r.RequeueAfter}
+	requeueResult := ctrl.Result{RequeueAfter: *r.ReconciliationInterval}
 
 	authorizationRequest := &extensionsv1.AuthorizationModelRequest{}
 	if err := r.Get(ctx, req.NamespacedName, authorizationRequest); err != nil {

@@ -113,7 +113,7 @@ var _ = BeforeSuite(func() {
 		Scheme:                   k8sManager.GetScheme(),
 		PermissionServiceFactory: setupMockFactory(),
 		Clock:                    clock.RealClock{},
-		RequeueAfter:             &requeueAfter,
+		ReconciliationInterval:   &requeueAfter,
 	}
 
 	err = controllerReconciler.SetupWithManager(k8sManager)
