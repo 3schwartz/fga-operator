@@ -82,40 +82,36 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 
-	authorizationRequest.Status.State = extensionsv1.Synchronized
-	if err := r.Status().Update(ctx, authorizationRequest); err != nil {
-		logger.Error(err, fmt.Sprintf("unable to set authorization model request in state %s", extensionsv1.Synchronized), "authorizationModelRequestName", req.Name)
-		return ctrl.Result{}, err
-	}
-
-	return requeueResult, nil
-
 	openFgaService, err := r.PermissionServiceFactory.GetService(r.Config)
 	if err != nil {
-		// TODO: Update Authorization model with error
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, err)
+		logger.Error(err, "unable to get permission service")
 		return ctrl.Result{}, err
 	}
 
 	store, err := r.getStore(ctx, req, openFgaService, authorizationRequest, &logger)
 	if err != nil {
-		// TODO: Update Authorization model with error
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, err)
+		logger.Error(err, "unable to get store")
 		return ctrl.Result{}, err
 	}
 
 	authorizationModel, err := r.getAuthorizationModel(ctx, req, openFgaService, authorizationRequest, reconcileTimestamp, &logger)
 	if err != nil {
-		// TODO: Update Authorization model with error
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, err)
+		logger.Error(err, "unable to get authorization model")
 		return ctrl.Result{}, err
 	}
 
 	if err = r.updateAuthorizationModel(ctx, openFgaService, authorizationRequest, authorizationModel, reconcileTimestamp, &logger); err != nil {
-		// TODO: Update Authorization model with error
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, err)
+		logger.Error(err, "unable to update authorization model")
 		return ctrl.Result{}, err
 	}
 
 	var deployments appsV1.DeploymentList
 	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingFields{deploymentIndexKey: store.Name}); err != nil {
-		// TODO: Update Authorization model with error
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, err)
 		logger.Error(err, "unable to list deployments")
 		return ctrl.Result{}, err
 	}
@@ -128,9 +124,21 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		r.updateDeployment(ctx, &deployment, req.Name, &logger)
 	}
 
-	// TODO: update to done
+	authorizationRequest.Status.State = extensionsv1.Synchronized
+	if err := r.Status().Update(ctx, authorizationRequest); err != nil {
+		logger.Error(err, fmt.Sprintf("unable to set authorization model request in state %s", extensionsv1.Synchronized), "authorizationModelRequestName", req.Name)
+		return ctrl.Result{}, err
+	}
 
 	return requeueResult, nil
+}
+
+func (r *AuthorizationModelRequestReconciler) failAuthorizationModelRequestSynchronization(ctx context.Context, authorizationRequest *extensionsv1.AuthorizationModelRequest, err error) error {
+	authorizationRequest.Status.State = extensionsv1.SynchronizationFailed
+	if statusError := r.Status().Update(ctx, authorizationRequest); statusError != nil {
+		return fmt.Errorf("failed to update status: %w with prior error %v", statusError, err)
+	}
+	return err
 }
 
 func (r *AuthorizationModelRequestReconciler) updateDeployment(
