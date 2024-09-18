@@ -23,6 +23,28 @@ import (
 	"strings"
 )
 
+// AuthorizationModelRequestStatusState defines the state of the AuthorizationModelRequest.
+// This enumeration represents the various stages of the lifecycle for an AuthorizationModelRequest.
+type AuthorizationModelRequestStatusState string
+
+const (
+	// Pending indicates that the AuthorizationModelRequest has been created
+	// but is not yet being processed.
+	Pending AuthorizationModelRequestStatusState = "Pending"
+
+	// Synchronizing indicates that the AuthorizationModelRequest is currently
+	// being synchronized or actively processed.
+	Synchronizing AuthorizationModelRequestStatusState = "Synchronizing"
+
+	// Synchronized indicates that the request has been successfully processed
+	// and is stable, ready for changes or further updates.
+	Synchronized AuthorizationModelRequestStatusState = "Synchronized"
+
+	// SynchronizationFailed indicates that the AuthorizationModelRequest
+	// encountered an error during processing or synchronization.
+	SynchronizationFailed AuthorizationModelRequestStatusState = "SynchronizationFailed"
+)
+
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // AuthorizationModelRequestSpec defines the desired state of AuthorizationModelRequest
@@ -32,21 +54,35 @@ type AuthorizationModelRequestSpec struct {
 	Instances []AuthorizationModelRequestInstance `json:"instances,omitempty"`
 }
 
-// AuthorizationModelRequestStatus defines the observed state of AuthorizationModelRequest
+// AuthorizationModelRequestStatus defines the observed state of AuthorizationModelRequest.
+// It captures the current status of the request, tracking its progress through
+// different stages of its lifecycle.
 type AuthorizationModelRequestStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Specifies the current state of the AuthorizationModelRequest.
+	// Valid values are:
+	// - "Pending" (default): The request has been created but processing has not yet started;
+	// - "Synchronizing": The request is actively being synchronized or processed;
+	// - "Synchronized": The request has been successfully processed and is stable, ready for changes or further updates;
+	// - "SynchronizationFailed": The request encountered an error during synchronization or processing.
+	// Defaults to "Pending" when the request is created.
+	// +kubebuilder:default="Pending"
+	State AuthorizationModelRequestStatusState `json:"state,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.state`
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // AuthorizationModelRequest is the Schema for the authorizationmodelrequests API
 type AuthorizationModelRequest struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   AuthorizationModelRequestSpec   `json:"spec,omitempty"`
+	Spec AuthorizationModelRequestSpec `json:"spec,omitempty"`
+
+	//+kubebuilder:default:status={"state": "Pending"}
+
 	Status AuthorizationModelRequestStatus `json:"status,omitempty"`
 }
 

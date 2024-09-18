@@ -14,7 +14,14 @@ spec:
     singular: authorizationmodelrequest
   scope: Namespaced
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - jsonPath: .status.state
+      name: Status
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
     schema:
       openAPIV3Schema:
         description: AuthorizationModelRequest is the Schema for the authorizationmodelrequests
@@ -63,8 +70,22 @@ spec:
                 type: array
             type: object
           status:
+            default:
+              state: Pending
             description: AuthorizationModelRequestStatus defines the observed state
               of AuthorizationModelRequest
+            properties:
+              state:
+                default: Pending
+                description: |-
+                  Specifies the current state of the AuthorizationModelRequest.
+                  Valid values are:
+                  - "Pending" (default): indicates that the request has been created but processing has not started;
+                  - "Processing": indicates that the request is actively being processed;
+                  - "Steady": indicates that the request has been processed and is stable, ready for changes or further updates;
+                  - "Error": indicates that there was an error during processing.
+                  Defaults to "Pending" when the request is created.
+                type: string
             type: object
         type: object
     served: true

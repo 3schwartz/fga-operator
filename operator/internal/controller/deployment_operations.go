@@ -41,6 +41,7 @@ func updateAuthorizationModelIdOnDeployment(
 	for _, deployment := range deployments.Items {
 		authInstance, err := authorizationModel.GetVersionFromDeployment(deployment)
 		if err != nil {
+			// TODO: make event
 			log.Error(err, "unable to get auth instance from deployment", "deploymentName", deployment.Name)
 			continue
 		}

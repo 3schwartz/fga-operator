@@ -76,27 +76,46 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	authorizationRequest.Status.State = extensionsv1.Synchronizing
+	if err := r.Status().Update(ctx, authorizationRequest); err != nil {
+		logger.Error(err, fmt.Sprintf("unable to set authorization model request in state %s", extensionsv1.Synchronizing), "authorizationModelRequestName", req.Name)
+		return ctrl.Result{}, err
+	}
+
+	authorizationRequest.Status.State = extensionsv1.Synchronized
+	if err := r.Status().Update(ctx, authorizationRequest); err != nil {
+		logger.Error(err, fmt.Sprintf("unable to set authorization model request in state %s", extensionsv1.Synchronized), "authorizationModelRequestName", req.Name)
+		return ctrl.Result{}, err
+	}
+
+	return requeueResult, nil
+
 	openFgaService, err := r.PermissionServiceFactory.GetService(r.Config)
 	if err != nil {
+		// TODO: Update Authorization model with error
 		return ctrl.Result{}, err
 	}
 
 	store, err := r.getStore(ctx, req, openFgaService, authorizationRequest, &logger)
 	if err != nil {
+		// TODO: Update Authorization model with error
 		return ctrl.Result{}, err
 	}
 
 	authorizationModel, err := r.getAuthorizationModel(ctx, req, openFgaService, authorizationRequest, reconcileTimestamp, &logger)
 	if err != nil {
+		// TODO: Update Authorization model with error
 		return ctrl.Result{}, err
 	}
 
 	if err = r.updateAuthorizationModel(ctx, openFgaService, authorizationRequest, authorizationModel, reconcileTimestamp, &logger); err != nil {
+		// TODO: Update Authorization model with error
 		return ctrl.Result{}, err
 	}
 
 	var deployments appsV1.DeploymentList
 	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingFields{deploymentIndexKey: store.Name}); err != nil {
+		// TODO: Update Authorization model with error
 		logger.Error(err, "unable to list deployments")
 		return ctrl.Result{}, err
 	}
@@ -109,6 +128,8 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		r.updateDeployment(ctx, &deployment, req.Name, &logger)
 	}
 
+	// TODO: update to done
+
 	return requeueResult, nil
 }
 
@@ -120,6 +141,7 @@ func (r *AuthorizationModelRequestReconciler) updateDeployment(
 
 ) {
 	if err := r.Update(ctx, deployment); err != nil {
+		// TODO: make event
 		log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
 		return
 	}
@@ -374,6 +396,7 @@ func (r *AuthorizationModelRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&extensionsv1.AuthorizationModelRequest{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		WithEventFilter(deletePredicate).
 		Complete(r)
 }
