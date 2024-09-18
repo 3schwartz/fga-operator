@@ -3,6 +3,18 @@ entries:
   fga-operator:
   - apiVersion: v2
     appVersion: 0.1.0
+    created: "2024-09-18T06:47:24.866971081Z"
+    description: 'A Helm chart for deploying fga-operator on Kubernetes.  The operator
+      manages and automates the deployment and reference of OpenFGA resources like
+      stores and authroization models. '
+    digest: 497a0caca869f147f9d4071a7b6245d581a63398c546db2cdd0750a8baaa7214
+    name: fga-operator
+    type: application
+    urls:
+    - https://github.com/3schwartz/fga-operator/releases/download/fga-operator-0.1.0-10916949724/fga-operator-0.1.0-10916949724.tgz
+    version: 0.1.0-10916949724
+  - apiVersion: v2
+    appVersion: 0.1.0
     created: "2024-09-13T16:12:22.119763092Z"
     description: 'A Helm chart for deploying fga-operator on Kubernetes.  The operator
       manages and automates the deployment and reference of OpenFGA resources like
@@ -109,4 +121,4 @@ entries:
     urls:
     - https://github.com/3schwartz/fga-operator/releases/download/fga-operator-0.1.0-9819670891/fga-operator-0.1.0-9819670891.tgz
     version: 0.1.0-9819670891
-generated: "2024-09-13T16:12:22.119822543Z"
+generated: "2024-09-18T06:47:24.867043947Z"
