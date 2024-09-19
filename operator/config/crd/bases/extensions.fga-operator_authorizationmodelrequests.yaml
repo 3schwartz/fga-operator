@@ -72,18 +72,20 @@ spec:
           status:
             default:
               state: Pending
-            description: AuthorizationModelRequestStatus defines the observed state
-              of AuthorizationModelRequest
+            description: |-
+              AuthorizationModelRequestStatus defines the observed state of AuthorizationModelRequest.
+              It captures the current status of the request, tracking its progress through
+              different stages of its lifecycle.
             properties:
               state:
                 default: Pending
                 description: |-
                   Specifies the current state of the AuthorizationModelRequest.
                   Valid values are:
-                  - "Pending" (default): indicates that the request has been created but processing has not started;
-                  - "Processing": indicates that the request is actively being processed;
-                  - "Steady": indicates that the request has been processed and is stable, ready for changes or further updates;
-                  - "Error": indicates that there was an error during processing.
+                  - "Pending" (default): The request has been created but processing has not yet started;
+                  - "Synchronizing": The request is actively being synchronized or processed;
+                  - "Synchronized": The request has been successfully processed and is stable, ready for changes or further updates;
+                  - "SynchronizationFailed": The request encountered an error during synchronization or processing.
                   Defaults to "Pending" when the request is created.
                 type: string
             type: object
