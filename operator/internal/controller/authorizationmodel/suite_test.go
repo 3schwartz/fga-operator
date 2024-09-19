@@ -17,6 +17,7 @@ limitations under the License.
 package authorizationmodel
 
 import (
+	"context"
 	"fmt"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -42,6 +43,7 @@ var (
 	cfg       *rest.Config
 	k8sClient client.Client // You'll be using this client in your tests.
 	testEnv   *envtest.Environment
+	ctx       context.Context
 )
 
 func TestControllers(t *testing.T) {
@@ -81,6 +83,8 @@ var _ = BeforeSuite(func() {
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
+
+	ctx, _ = context.WithCancel(context.TODO())
 
 })
 
