@@ -19,10 +19,13 @@ package main
 import (
 	"crypto/tls"
 	"fga-operator/internal/configurations"
+	"fga-operator/internal/controller/authorizationmodel"
+	"fga-operator/internal/controller/authorizationmodelrequest"
 	"fga-operator/internal/observability"
 	"fga-operator/internal/openfga"
 	"flag"
 	"os"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -37,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	extensionsv1 "fga-operator/api/v1"
-	"fga-operator/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -130,7 +132,7 @@ func main() {
 	}
 
 	reconciliationInterval := configurations.GetReconciliationInterval(setupLog)
-	if err = (&controller.AuthorizationModelRequestReconciler{
+	if err = (&authorizationmodelrequest.AuthorizationModelRequestReconciler{
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
 		PermissionServiceFactory: openfga.OpenFgaServiceFactory{},
@@ -138,6 +140,13 @@ func main() {
 		ReconciliationInterval:   &reconciliationInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AuthorizationModelRequest")
+		os.Exit(1)
+	}
+	if err = (&authorizationmodel.AuthorizationModelReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "AuthorizationModel")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
