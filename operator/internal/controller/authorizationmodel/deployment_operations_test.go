@@ -1,4 +1,4 @@
-package authorizationmodelrequest
+package authorizationmodel
 
 import (
 	"context"

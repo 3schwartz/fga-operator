@@ -22,7 +22,6 @@ import (
 	"fga-operator/internal/openfga"
 	"fmt"
 	"github.com/go-logr/logr"
-	appsV1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/clock"
@@ -45,14 +44,11 @@ type AuthorizationModelRequestReconciler struct {
 	openfga.PermissionServiceFactory
 	openfga.Config
 	Clock
-	ReconciliationInterval *time.Duration
 }
 
 type Clock interface {
 	Now() time.Time
 }
-
-const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
 
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodelrequests,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodelrequests/status,verbs=get;update;patch
@@ -65,10 +61,8 @@ const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("Reconciliation triggered")
+	logger.Info("Reconciliation triggered for authorizationmodel request")
 	reconcileTimestamp := r.Now()
-
-	requeueResult := ctrl.Result{RequeueAfter: *r.ReconciliationInterval}
 
 	authorizationRequest := &extensionsv1.AuthorizationModelRequest{}
 	if err := r.Get(ctx, req.NamespacedName, authorizationRequest); err != nil {
@@ -89,7 +83,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 
-	store, err := r.getStore(ctx, req, openFgaService, authorizationRequest, &logger)
+	err = r.ensureStoreExistsAndSetStoreId(ctx, req, openFgaService, authorizationRequest, &logger)
 	if err != nil {
 		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, err)
 		logger.Error(err, "unable to get store")
@@ -109,28 +103,13 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 
-	var deployments appsV1.DeploymentList
-	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingFields{deploymentIndexKey: store.Name}); err != nil {
-		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, err)
-		logger.Error(err, "unable to list deployments")
-		return ctrl.Result{}, err
-	}
-
-	updates := updateStoreIdOnDeployments(deployments, store, reconcileTimestamp)
-
-	updateAuthorizationModelIdOnDeployment(deployments, updates, authorizationModel, reconcileTimestamp, &logger)
-
-	for _, deployment := range updates {
-		r.updateDeployment(ctx, &deployment, req.Name, &logger)
-	}
-
 	authorizationRequest.Status.State = extensionsv1.Synchronized
 	if err := r.Status().Update(ctx, authorizationRequest); err != nil {
 		logger.Error(err, fmt.Sprintf("unable to set authorization model request in state %s", extensionsv1.Synchronized), "authorizationModelRequestName", req.Name)
 		return ctrl.Result{}, err
 	}
 
-	return requeueResult, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *AuthorizationModelRequestReconciler) failAuthorizationModelRequestSynchronization(ctx context.Context, authorizationRequest *extensionsv1.AuthorizationModelRequest, err error) error {
@@ -139,22 +118,6 @@ func (r *AuthorizationModelRequestReconciler) failAuthorizationModelRequestSynch
 		return fmt.Errorf("failed to update status: %w with prior error %v", statusError, err)
 	}
 	return err
-}
-
-func (r *AuthorizationModelRequestReconciler) updateDeployment(
-	ctx context.Context,
-	deployment *appsV1.Deployment,
-	modelName string,
-	log *logr.Logger,
-
-) {
-	if err := r.Update(ctx, deployment); err != nil {
-		// TODO: make event
-		log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
-		return
-	}
-	observability.RecordDeploymentUpdated(deployment.Name, modelName)
-	log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
 }
 
 func updateAuthorizationModelWithMissingInstances(
@@ -320,26 +283,26 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 	return &authorizationModel, nil
 }
 
-func (r *AuthorizationModelRequestReconciler) getStore(
+func (r *AuthorizationModelRequestReconciler) ensureStoreExistsAndSetStoreId(
 	ctx context.Context,
 	req ctrl.Request,
 	openFgaService openfga.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
-	log *logr.Logger) (*extensionsv1.Store, error) {
+	log *logr.Logger) error {
 
 	store := &extensionsv1.Store{}
 	err := r.Get(ctx, req.NamespacedName, store)
 	switch {
 	case client.IgnoreNotFound(err) != nil:
-		return nil, err
+		return err
 	case errors.IsNotFound(err):
 		store, err = r.createStoreResource(ctx, req, openFgaService, authorizationModelRequest, log)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	openFgaService.SetStoreId(store.Spec.Id)
-	return store, nil
+	return nil
 }
 
 func (r *AuthorizationModelRequestReconciler) createStoreResource(
@@ -381,21 +344,9 @@ func (r *AuthorizationModelRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 		r.Clock = clock.RealClock{}
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &appsV1.Deployment{}, deploymentIndexKey, func(rawObj client.Object) []string {
-		deployment := rawObj.(*appsV1.Deployment)
-		labelValue, exists := deployment.Labels[extensionsv1.OpenFgaStoreLabel]
-		if !exists {
-			return nil
-		}
-		return []string{labelValue}
-	}); err != nil {
-		return err
-	}
-
 	deletePredicate := predicate.Funcs{
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if object, ok := e.Object.(*extensionsv1.AuthorizationModelRequest); ok {
-				observability.RecordK8AuthorizationModelEvent(observability.Deleted, object.Name)
+			if _, ok := e.Object.(*extensionsv1.AuthorizationModelRequest); ok {
 				return false
 			}
 			return true

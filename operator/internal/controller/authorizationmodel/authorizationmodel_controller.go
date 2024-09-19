@@ -18,6 +18,14 @@ package authorizationmodel
 
 import (
 	"context"
+	extensionsv1 "fga-operator/api/v1"
+	"fga-operator/internal/observability"
+	"github.com/go-logr/logr"
+	appsV1 "k8s.io/api/apps/v1"
+	"k8s.io/utils/clock"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -29,7 +37,15 @@ import (
 type AuthorizationModelReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Clock
+	ReconciliationInterval *time.Duration
 }
+
+type Clock interface {
+	Now() time.Time
+}
+
+const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
 
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodels,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodels/status,verbs=get;update;patch
@@ -37,25 +53,92 @@ type AuthorizationModelReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the AuthorizationModel object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
+	logger.Info("Reconciliation triggered for authorization model request")
+	reconcileTimestamp := r.Now()
 
-	// TODO(user): your logic here
+	requeueResult := ctrl.Result{RequeueAfter: *r.ReconciliationInterval}
 
-	return ctrl.Result{}, nil
+	store := &extensionsv1.Store{}
+	if err := r.Get(ctx, req.NamespacedName, store); err != nil {
+		logger.Error(err, "unable to fetch store", "storeName", req.Name)
+		return ctrl.Result{}, err
+	}
+
+	authorizationModel := &extensionsv1.AuthorizationModel{}
+	if err := r.Get(ctx, req.NamespacedName, authorizationModel); err != nil {
+		// TODO: handle error
+		logger.Error(err, "unable to fetch authorization modem", "authorizationModelName", req.Name)
+		return ctrl.Result{}, err
+	}
+
+	var deployments appsV1.DeploymentList
+	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingFields{deploymentIndexKey: store.Name}); err != nil {
+		// TODO: handle error
+		logger.Error(err, "unable to list deployments")
+		return ctrl.Result{}, err
+	}
+
+	updates := updateStoreIdOnDeployments(deployments, store, reconcileTimestamp)
+
+	updateAuthorizationModelIdOnDeployment(deployments, updates, authorizationModel, reconcileTimestamp, &logger)
+
+	for _, deployment := range updates {
+		r.updateDeployment(ctx, &deployment, req.Name, &logger)
+	}
+
+	return requeueResult, nil
+}
+
+func (r *AuthorizationModelReconciler) updateDeployment(
+	ctx context.Context,
+	deployment *appsV1.Deployment,
+	modelName string,
+	log *logr.Logger,
+
+) {
+	if err := r.Update(ctx, deployment); err != nil {
+		// TODO: make event
+		log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
+		return
+	}
+	observability.RecordDeploymentUpdated(deployment.Name, modelName)
+	log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *AuthorizationModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if r.Clock == nil {
+		r.Clock = clock.RealClock{}
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &appsV1.Deployment{}, deploymentIndexKey, func(rawObj client.Object) []string {
+		deployment := rawObj.(*appsV1.Deployment)
+		labelValue, exists := deployment.Labels[extensionsv1.OpenFgaStoreLabel]
+		if !exists {
+			return nil
+		}
+		return []string{labelValue}
+	}); err != nil {
+		return err
+	}
+
+	deletePredicate := predicate.Funcs{
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if object, ok := e.Object.(*extensionsv1.AuthorizationModel); ok {
+				observability.RecordK8AuthorizationModelEvent(observability.Deleted, object.Name)
+				return false
+			}
+			return true
+		},
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
-		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		// For().
+		For(&extensionsv1.AuthorizationModel{}).
+		WithEventFilter(deletePredicate).
 		Complete(r)
 }

@@ -131,20 +131,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	reconciliationInterval := configurations.GetReconciliationInterval(setupLog)
 	if err = (&authorizationmodelrequest.AuthorizationModelRequestReconciler{
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
 		PermissionServiceFactory: openfga.OpenFgaServiceFactory{},
 		Config:                   config,
-		ReconciliationInterval:   &reconciliationInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AuthorizationModelRequest")
 		os.Exit(1)
 	}
+
+	reconciliationInterval := configurations.GetReconciliationInterval(setupLog)
 	if err = (&authorizationmodel.AuthorizationModelReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:                 mgr.GetClient(),
+		Scheme:                 mgr.GetScheme(),
+		ReconciliationInterval: &reconciliationInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AuthorizationModel")
 		os.Exit(1)

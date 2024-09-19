@@ -1,4 +1,4 @@
-package authorizationmodelrequest
+package authorizationmodel
 
 import (
 	extensionsv1 "fga-operator/api/v1"
