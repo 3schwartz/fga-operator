@@ -240,6 +240,12 @@ func validateDeployment(deploymentName, namespaceName, storeId, authModelId stri
 		if deployment.Annotations[extensionsv1.OpenFgaAuthModelVersionLabel] != modelVersion.String() {
 			return fmt.Errorf("deployment does not have annotation %s with value %s", extensionsv1.OpenFgaAuthModelVersionLabel, modelVersion.String())
 		}
+		if deployment.Annotations[extensionsv1.OpenFgaStoreIdUpdatedAtAnnotation] != MockTimeAsString() {
+			return fmt.Errorf("deployment does not have annotation %s with value %s", extensionsv1.OpenFgaStoreIdUpdatedAtAnnotation, MockTimeAsString())
+		}
+		if deployment.Annotations[extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation] != MockTimeAsString() {
+			return fmt.Errorf("deployment does not have annotation %s with value %s", extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation, MockTimeAsString())
+		}
 
 		return nil
 	}, duration, interval).Should(Succeed())
