@@ -21,7 +21,6 @@ import (
 	"fmt"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/clock"
 	"path/filepath"
 	"runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -100,7 +99,7 @@ var _ = BeforeSuite(func() {
 	controllerReconciler = &AuthorizationModelReconciler{
 		Client:                 k8sManager.GetClient(),
 		Scheme:                 k8sManager.GetScheme(),
-		Clock:                  clock.RealClock{},
+		Clock:                  MockClock{},
 		ReconciliationInterval: &reconcileInterval,
 	}
 
@@ -113,6 +112,20 @@ var _ = BeforeSuite(func() {
 		Expect(err).ToNot(HaveOccurred())
 	}()
 })
+
+var (
+	mockTime = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+)
+
+type MockClock struct{}
+
+func (MockClock) Now() time.Time {
+	return mockTime
+}
+
+func MockTimeAsString() string {
+	return mockTime.UTC().Format(time.RFC3339)
+}
 
 var _ = AfterSuite(func() {
 	cancel()
