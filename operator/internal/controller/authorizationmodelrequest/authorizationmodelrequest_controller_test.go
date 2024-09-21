@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/clock"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -61,7 +62,7 @@ type document
   relations
     define member: [user]
 `
-	duration = time.Second * 3
+	duration = time.Millisecond * 1_500
 	interval = time.Millisecond * 250
 )
 
@@ -109,6 +110,15 @@ func createAuthorizationModel(name, namespace string) extensionsv1.Authorization
 	return extensionsv1.NewAuthorizationModel(name, namespace, []extensionsv1.AuthorizationModelDefinition{definition}, time.Now())
 }
 
+func ensureAuthorizationModelRequestExists(ctx context.Context, typeNamespacedName types.NamespacedName) {
+	authorizationModelRequest := &extensionsv1.AuthorizationModelRequest{}
+	err := k8sClient.Get(ctx, typeNamespacedName, authorizationModelRequest)
+	if err != nil && errors.IsNotFound(err) {
+		resource := createAuthorizationModelRequest(resourceName, namespaceName)
+		Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
+	}
+}
+
 var _ = Describe("AuthorizationModelRequest Controller", func() {
 	Context("When reconciling a resource", func() {
 		ctx := context.Background()
@@ -140,15 +150,10 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			// Arrange
-			authorizationModelRequest := &extensionsv1.AuthorizationModelRequest{}
-			err := k8sClient.Get(ctx, typeNamespacedName, authorizationModelRequest)
-			if err != nil && errors.IsNotFound(err) {
-				resource := createAuthorizationModelRequest(resourceName, namespaceName)
-				Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
-			}
+			ensureAuthorizationModelRequestExists(ctx, typeNamespacedName)
 
 			// Act
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			_, err := controllerReconciler.Reconcile(ctx, request)
 			Expect(err).To(Not(HaveOccurred()))
 
 			// Assert
@@ -167,6 +172,134 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				}
 				return authModelRequest.Status.State, nil
 			}, duration, interval).Should(Equal(extensionsv1.Synchronized))
+		})
+
+		It("should show pending when not reconciled", func() {
+			// Arrange
+			ensureAuthorizationModelRequestExists(ctx, typeNamespacedName)
+
+			// Assert
+			Consistently(func() (extensionsv1.AuthorizationModelRequestStatusState, error) {
+				authModelRequest := &extensionsv1.AuthorizationModelRequest{}
+				if err := k8sClient.Get(ctx, typeNamespacedName, authModelRequest); err != nil {
+					return "", err
+				}
+				return authModelRequest.Status.State, nil
+			}, duration, interval).Should(Equal(extensionsv1.Pending))
+		})
+
+		It("should have status synchronization failed, when not able to get service", func() {
+			// Arrange
+			ensureAuthorizationModelRequestExists(ctx, typeNamespacedName)
+
+			mockFactory := fgainternal.NewMockPermissionServiceFactory(goMockController)
+			mockFactory.EXPECT().GetService(gomock.Any()).Return(nil, fmt.Errorf("error"))
+
+			reconciler := &AuthorizationModelRequestReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				Clock:                    clock.RealClock{},
+				PermissionServiceFactory: mockFactory,
+			}
+
+			// Act
+			_, err := reconciler.Reconcile(ctx, request)
+			Expect(err).To(HaveOccurred())
+			Consistently(func() error {
+				store := &extensionsv1.Store{}
+				return k8sClient.Get(ctx, typeNamespacedName, store)
+			}, duration, interval).ShouldNot(Succeed())
+			Consistently(func() error {
+				authModel := &extensionsv1.AuthorizationModel{}
+				return k8sClient.Get(ctx, typeNamespacedName, authModel)
+			}, duration, interval).ShouldNot(Succeed())
+			Eventually(func() (extensionsv1.AuthorizationModelRequestStatusState, error) {
+				authModelRequest := &extensionsv1.AuthorizationModelRequest{}
+				if err := k8sClient.Get(ctx, typeNamespacedName, authModelRequest); err != nil {
+					return "", err
+				}
+				return authModelRequest.Status.State, nil
+			}, duration, interval).Should(Equal(extensionsv1.SynchronizationFailed))
+		})
+
+		It("should have status synchronization failed, when not able to create store", func() {
+			ensureAuthorizationModelRequestExists(ctx, typeNamespacedName)
+
+			mockFactory := fgainternal.NewMockPermissionServiceFactory(goMockController)
+			mockService := fgainternal.NewMockPermissionService(goMockController)
+			mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil)
+			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
+			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("error"))
+
+			reconciler := &AuthorizationModelRequestReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				Clock:                    clock.RealClock{},
+				PermissionServiceFactory: mockFactory,
+			}
+
+			// Act
+			_, err := reconciler.Reconcile(ctx, request)
+			Expect(err).To(HaveOccurred())
+			Consistently(func() error {
+				store := &extensionsv1.Store{}
+				return k8sClient.Get(ctx, typeNamespacedName, store)
+			}, duration, interval).ShouldNot(Succeed())
+			Consistently(func() error {
+				authModel := &extensionsv1.AuthorizationModel{}
+				return k8sClient.Get(ctx, typeNamespacedName, authModel)
+			}, duration, interval).ShouldNot(Succeed())
+			Eventually(func() (extensionsv1.AuthorizationModelRequestStatusState, error) {
+				authModelRequest := &extensionsv1.AuthorizationModelRequest{}
+				if err := k8sClient.Get(ctx, typeNamespacedName, authModelRequest); err != nil {
+					return "", err
+				}
+				return authModelRequest.Status.State, nil
+			}, duration, interval).Should(Equal(extensionsv1.SynchronizationFailed))
+		})
+
+		It("should have status synchronization failed, when not able to create authorization model", func() {
+			ensureAuthorizationModelRequestExists(ctx, typeNamespacedName)
+			store := fgainternal.Store{
+				Id:        "foo",
+				Name:      resourceName,
+				CreatedAt: time.Now(),
+			}
+			mockFactory := fgainternal.NewMockPermissionServiceFactory(goMockController)
+			mockService := fgainternal.NewMockPermissionService(goMockController)
+			mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil)
+			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
+			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store, nil)
+			mockService.EXPECT().SetStoreId(gomock.Any())
+			mockService.EXPECT().
+				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return("", fmt.Errorf("error"))
+
+			reconciler := &AuthorizationModelRequestReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				Clock:                    clock.RealClock{},
+				PermissionServiceFactory: mockFactory,
+			}
+
+			// Act
+			_, err := reconciler.Reconcile(ctx, request)
+			Expect(err).To(HaveOccurred())
+			Eventually(func() error {
+				store := &extensionsv1.Store{}
+				return k8sClient.Get(ctx, typeNamespacedName, store)
+			}, duration, interval).Should(Succeed())
+			Consistently(func() error {
+				authModel := &extensionsv1.AuthorizationModel{}
+				return k8sClient.Get(ctx, typeNamespacedName, authModel)
+			}, duration, interval).ShouldNot(Succeed())
+			Eventually(func() (extensionsv1.AuthorizationModelRequestStatusState, error) {
+				authModelRequest := &extensionsv1.AuthorizationModelRequest{}
+				if err := k8sClient.Get(ctx, typeNamespacedName, authModelRequest); err != nil {
+					return "", err
+				}
+				return authModelRequest.Status.State, nil
+			}, duration, interval).Should(Equal(extensionsv1.SynchronizationFailed))
 		})
 
 		It("given existing store when create store resource then return existing", func() {
