@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/clock"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -195,9 +196,11 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			mockFactory := fgainternal.NewMockPermissionServiceFactory(goMockController)
 			mockFactory.EXPECT().GetService(gomock.Any()).Return(nil, fmt.Errorf("error"))
 
+			fakeRecorder := record.NewFakeRecorder(5)
 			reconciler := &AuthorizationModelRequestReconciler{
 				Client:                   k8sClient,
 				Scheme:                   k8sClient.Scheme(),
+				Recorder:                 fakeRecorder,
 				Clock:                    clock.RealClock{},
 				PermissionServiceFactory: mockFactory,
 			}
@@ -220,6 +223,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				}
 				return authModelRequest.Status.State, nil
 			}, duration, interval).Should(Equal(extensionsv1.SynchronizationFailed))
+			validateEvent(fakeRecorder.Events, EventReasonOpenFGAConnectionFailed)
 		})
 
 		It("should have status synchronization failed, when not able to create store", func() {
@@ -231,9 +235,11 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
 			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("error"))
 
+			fakeRecorder := record.NewFakeRecorder(5)
 			reconciler := &AuthorizationModelRequestReconciler{
 				Client:                   k8sClient,
 				Scheme:                   k8sClient.Scheme(),
+				Recorder:                 fakeRecorder,
 				Clock:                    clock.RealClock{},
 				PermissionServiceFactory: mockFactory,
 			}
@@ -256,6 +262,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				}
 				return authModelRequest.Status.State, nil
 			}, duration, interval).Should(Equal(extensionsv1.SynchronizationFailed))
+			validateEvent(fakeRecorder.Events, EventReasonOpenFGAStoreFailed)
 		})
 
 		It("should have status synchronization failed, when not able to create authorization model", func() {
@@ -275,9 +282,11 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return("", fmt.Errorf("error"))
 
+			fakeRecorder := record.NewFakeRecorder(5)
 			reconciler := &AuthorizationModelRequestReconciler{
 				Client:                   k8sClient,
 				Scheme:                   k8sClient.Scheme(),
+				Recorder:                 fakeRecorder,
 				Clock:                    clock.RealClock{},
 				PermissionServiceFactory: mockFactory,
 			}
@@ -300,6 +309,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				}
 				return authModelRequest.Status.State, nil
 			}, duration, interval).Should(Equal(extensionsv1.SynchronizationFailed))
+			validateEvent(fakeRecorder.Events, EventReasonAuthorizationModelCreationFailed)
 		})
 
 		It("given existing store when create store resource then return existing", func() {
@@ -464,3 +474,21 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 		})
 	})
 })
+
+func validateEvent(events <-chan string, eventReason EventReason) {
+	select {
+	case event := <-events:
+		Expect(event).To(ContainSubstring(string(eventReason)))
+	default:
+		Fail("Expected an event, but no events were recorded")
+	}
+	// Ensure there are no additional events
+	Consistently(func() string {
+		select {
+		case event := <-events:
+			return event
+		default:
+			return ""
+		}
+	}, duration, interval).Should(BeEmpty())
+}

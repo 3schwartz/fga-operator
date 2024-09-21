@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/clock"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -37,10 +38,24 @@ import (
 	extensionsv1 "fga-operator/api/v1"
 )
 
+const (
+	EventRecorderLabel = "AuthorizationModelRequestReconciler"
+)
+
+type EventReason string
+
+const (
+	EventReasonOpenFGAConnectionFailed          EventReason = "EventReasonOpenFGAConnectionFailed"
+	EventReasonOpenFGAStoreFailed               EventReason = "EventReasonOpenFGAStoreFailed"
+	EventReasonAuthorizationModelCreationFailed EventReason = "EventReasonAuthorizationModelCreationFailed"
+	EventReasonAuthorizationModelUpdateFailed   EventReason = "EventReasonAuthorizationModelUpdateFailed"
+)
+
 // AuthorizationModelRequestReconciler reconciles a AuthorizationModelRequest object
 type AuthorizationModelRequestReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 	openfga.PermissionServiceFactory
 	openfga.Config
 	Clock
@@ -53,6 +68,7 @@ type Clock interface {
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodelrequests,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodelrequests/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodelrequests/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -78,27 +94,27 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 
 	openFgaService, err := r.PermissionServiceFactory.GetService(r.Config)
 	if err != nil {
-		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, err)
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonOpenFGAConnectionFailed, err)
 		logger.Error(err, "unable to get permission service")
 		return ctrl.Result{}, err
 	}
 
 	err = r.ensureStoreExistsAndSetStoreId(ctx, req, openFgaService, authorizationRequest, &logger)
 	if err != nil {
-		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, err)
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonOpenFGAStoreFailed, err)
 		logger.Error(err, "unable to get store")
 		return ctrl.Result{}, err
 	}
 
 	authorizationModel, err := r.getAuthorizationModel(ctx, req, openFgaService, authorizationRequest, reconcileTimestamp, &logger)
 	if err != nil {
-		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, err)
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonAuthorizationModelCreationFailed, err)
 		logger.Error(err, "unable to get authorization model")
 		return ctrl.Result{}, err
 	}
 
 	if err = r.updateAuthorizationModel(ctx, openFgaService, authorizationRequest, authorizationModel, reconcileTimestamp, &logger); err != nil {
-		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, err)
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonAuthorizationModelUpdateFailed, err)
 		logger.Error(err, "unable to update authorization model")
 		return ctrl.Result{}, err
 	}
@@ -112,7 +128,13 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	return ctrl.Result{}, nil
 }
 
-func (r *AuthorizationModelRequestReconciler) failAuthorizationModelRequestSynchronization(ctx context.Context, authorizationRequest *extensionsv1.AuthorizationModelRequest, err error) error {
+func (r *AuthorizationModelRequestReconciler) failAuthorizationModelRequestSynchronization(ctx context.Context, authorizationRequest *extensionsv1.AuthorizationModelRequest, eventReason EventReason, err error) error {
+	r.Recorder.Event(
+		authorizationRequest,
+		"Warning",
+		string(eventReason),
+		err.Error(),
+	)
 	authorizationRequest.Status.State = extensionsv1.SynchronizationFailed
 	if statusError := r.Status().Update(ctx, authorizationRequest); statusError != nil {
 		return fmt.Errorf("failed to update status: %w with prior error %v", statusError, err)

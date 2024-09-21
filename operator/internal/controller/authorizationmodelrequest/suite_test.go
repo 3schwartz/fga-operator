@@ -20,6 +20,7 @@ import (
 	fgainternal "fga-operator/internal/openfga"
 	"fmt"
 	"github.com/golang/mock/gomock"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/clock"
 	"path/filepath"
 	"runtime"
@@ -98,9 +99,11 @@ var _ = BeforeSuite(func() {
 	goMockController = gomock.NewController(GinkgoT())
 	permissionServiceFactory = setupMockFactory()
 
+	fakeRecorder := record.NewFakeRecorder(20)
 	controllerReconciler = &AuthorizationModelRequestReconciler{
 		Client:                   k8sClient,
 		Scheme:                   k8sClient.Scheme(),
+		Recorder:                 fakeRecorder,
 		Clock:                    clock.RealClock{},
 		PermissionServiceFactory: permissionServiceFactory,
 	}

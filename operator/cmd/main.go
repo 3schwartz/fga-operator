@@ -134,6 +134,7 @@ func main() {
 	if err = (&authorizationmodelrequest.AuthorizationModelRequestReconciler{
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
+		Recorder:                 mgr.GetEventRecorderFor(authorizationmodelrequest.EventRecorderLabel),
 		PermissionServiceFactory: openfga.OpenFgaServiceFactory{},
 		Config:                   config,
 	}).SetupWithManager(mgr); err != nil {
