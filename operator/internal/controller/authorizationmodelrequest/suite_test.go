@@ -17,14 +17,12 @@ limitations under the License.
 package authorizationmodelrequest
 
 import (
-	"context"
 	fgainternal "fga-operator/internal/openfga"
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"k8s.io/utils/clock"
 	"path/filepath"
 	"runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"testing"
 	"time"
 
@@ -46,13 +44,12 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	cfg                  *rest.Config
-	k8sClient            client.Client
-	testEnv              *envtest.Environment
-	ctx                  context.Context
-	cancel               context.CancelFunc
-	controllerReconciler *AuthorizationModelRequestReconciler
-	goMockController     *gomock.Controller
+	cfg                      *rest.Config
+	k8sClient                client.Client
+	testEnv                  *envtest.Environment
+	controllerReconciler     *AuthorizationModelRequestReconciler
+	goMockController         *gomock.Controller
+	permissionServiceFactory fgainternal.PermissionServiceFactory
 )
 
 const (
@@ -98,35 +95,19 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
-	ctx, cancel = context.WithCancel(context.TODO())
-
-	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme: scheme.Scheme,
-	})
-	Expect(err).ToNot(HaveOccurred())
-
 	goMockController = gomock.NewController(GinkgoT())
+	permissionServiceFactory = setupMockFactory()
 
 	controllerReconciler = &AuthorizationModelRequestReconciler{
-		Client:                   k8sManager.GetClient(),
-		Scheme:                   k8sManager.GetScheme(),
-		PermissionServiceFactory: setupMockFactory(),
+		Client:                   k8sClient,
+		Scheme:                   k8sClient.Scheme(),
 		Clock:                    clock.RealClock{},
+		PermissionServiceFactory: permissionServiceFactory,
 	}
-
-	err = controllerReconciler.SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-
-	go func() {
-		defer GinkgoRecover()
-		err = k8sManager.Start(ctx)
-		Expect(err).ToNot(HaveOccurred())
-	}()
 })
 
 var _ = AfterSuite(func() {
 	defer goMockController.Finish()
-	cancel()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())

@@ -22,6 +22,9 @@ func updateStoreIdOnDeployments(
 	updates := map[DeploymentIdentifier]appsV1.Deployment{}
 	for _, deployment := range deployments.Items {
 		if updateDeploymentEnvVar(&deployment, extensionsv1.OpenFgaStoreIdEnv, store.Spec.Id) {
+			if deployment.Annotations == nil {
+				deployment.Annotations = make(map[string]string)
+			}
 			deployment.Annotations[extensionsv1.OpenFgaStoreIdUpdatedAtAnnotation] = reconcileTimestamp.UTC().Format(time.RFC3339)
 
 			updates[DeploymentIdentifier{namespace: deployment.Namespace, name: deployment.Name}] = deployment

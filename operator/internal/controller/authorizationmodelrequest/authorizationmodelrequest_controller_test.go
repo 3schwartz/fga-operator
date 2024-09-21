@@ -17,6 +17,7 @@ limitations under the License.
 package authorizationmodelrequest
 
 import (
+	"context"
 	extensionsv1 "fga-operator/api/v1"
 	fgainternal "fga-operator/internal/openfga"
 	"fmt"
@@ -110,6 +111,7 @@ func createAuthorizationModel(name, namespace string) extensionsv1.Authorization
 
 var _ = Describe("AuthorizationModelRequest Controller", func() {
 	Context("When reconciling a resource", func() {
+		ctx := context.Background()
 		logger := log.FromContext(ctx)
 
 		typeNamespacedName := types.NamespacedName{
@@ -145,6 +147,11 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
 			}
 
+			// Act
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(Not(HaveOccurred()))
+
+			// Assert
 			Eventually(func() error {
 				store := &extensionsv1.Store{}
 				return k8sClient.Get(ctx, typeNamespacedName, store)
