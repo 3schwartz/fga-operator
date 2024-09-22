@@ -56,8 +56,8 @@ const (
 type EventReason string
 
 const (
-	EventReasonStoreNotFound                    EventReason = "StoreNotFound"
-	EventReasonAuthorizationModelNotFound       EventReason = "AuthorizationModelNotFound"
+	EventReasonStoreFetchFailure                EventReason = "StoreFetchFailure"
+	EventReasonAuthorizationFetchFailure        EventReason = "AuthorizationFetchFailure"
 	EventReasonAuthorizationModelIdUpdateFailed EventReason = "AuthorizationModelIdUpdateFailed"
 	EventReasonFailedListingDeployments         EventReason = "FailedListingDeployments"
 	EventReasonFailedUpdatingDeployment         EventReason = "FailedUpdatingDeployment"
@@ -75,10 +75,22 @@ const (
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("Reconciliation triggered for authorization model request")
+	logger.Info("Reconciliation triggered for authorization model")
 	reconcileTimestamp := r.Now()
 
 	requeueResult := ctrl.Result{RequeueAfter: *r.ReconciliationInterval}
+
+	authorizationModel := &extensionsv1.AuthorizationModel{}
+	if err := r.Get(ctx, req.NamespacedName, authorizationModel); err != nil {
+		logger.Error(err, "unable to fetch authorization model", "authorizationModelName", req.Name)
+		r.Recorder.Event(
+			authorizationModel,
+			v1.EventTypeWarning,
+			string(EventReasonAuthorizationFetchFailure),
+			err.Error(),
+		)
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 
 	store := &extensionsv1.Store{}
 	if err := r.Get(ctx, req.NamespacedName, store); err != nil {
@@ -86,22 +98,10 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 		r.Recorder.Event(
 			store,
 			v1.EventTypeWarning,
-			string(EventReasonStoreNotFound),
+			string(EventReasonStoreFetchFailure),
 			err.Error(),
 		)
-		return ctrl.Result{}, err
-	}
-
-	authorizationModel := &extensionsv1.AuthorizationModel{}
-	if err := r.Get(ctx, req.NamespacedName, authorizationModel); err != nil {
-		r.Recorder.Event(
-			authorizationModel,
-			v1.EventTypeWarning,
-			string(EventReasonAuthorizationModelNotFound),
-			err.Error(),
-		)
-		logger.Error(err, "unable to fetch authorization modem", "authorizationModelName", req.Name)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	var deployments appsV1.DeploymentList
