@@ -34,24 +34,50 @@ func updateStoreIdOnDeployments(
 	return updates
 }
 
+type updateAuthorizationModelIdFailure struct {
+	deployment appsV1.Deployment
+	err        error
+}
+
+// updateAuthorizationModelIdOnDeployment updates the Authorization Model ID for each deployment in the list.
+//
+// It modifies the `currentUpdated` map in place, updating deployments with new environment variables
+// and annotations. If a deployment is already in `currentUpdated`, it will be replaced with its updated version.
+//
+// Parameters:
+//   - `deployments`: List of Kubernetes deployments to update.
+//   - `currentUpdated`: Map of deployments being updated (mutated in place).
+//   - `authorizationModel`: Interface for fetching the authorization model version.
+//   - `reconcileTimestamp`: Timestamp for deployment annotations.
+//   - `log`: Logger for error and info logging.
+//
+// Returns:
+//   - `[]updateAuthorizationModelIdFailure`: Contains updated deployment failures.
+//
+// Note: `currentUpdated` is mutated directly.
 func updateAuthorizationModelIdOnDeployment(
 	deployments appsV1.DeploymentList,
-	updates map[DeploymentIdentifier]appsV1.Deployment,
+	currentUpdated map[DeploymentIdentifier]appsV1.Deployment,
 	authorizationModel interfaces.AuthorizationModelInterface,
 	reconcileTimestamp time.Time,
 	log *logr.Logger,
-) {
+) []updateAuthorizationModelIdFailure {
+	errors := make([]updateAuthorizationModelIdFailure, 0)
+
 	for _, deployment := range deployments.Items {
 		authInstance, err := authorizationModel.GetVersionFromDeployment(deployment)
+		deploymentIdentifier := DeploymentIdentifier{namespace: deployment.Namespace, name: deployment.Name}
+
 		if err != nil {
-			// TODO: make event
+			errors = append(errors, updateAuthorizationModelIdFailure{deployment: deployment, err: err})
 			log.Error(err, "unable to get auth instance from deployment", "deploymentName", deployment.Name)
 			continue
 		}
-		deploymentIdentifier := DeploymentIdentifier{namespace: deployment.Namespace, name: deployment.Name}
-		if updatedDeployment, ok := updates[deploymentIdentifier]; ok {
+
+		if updatedDeployment, ok := currentUpdated[deploymentIdentifier]; ok {
 			deployment = updatedDeployment
 		}
+
 		if !updateDeploymentEnvVar(&deployment, extensionsv1.OpenFgaAuthModelIdEnv, authInstance.Id) {
 			log.V(1).Info("deployment had correct auth id", "authInstance", authInstance)
 			continue
@@ -60,8 +86,10 @@ func updateAuthorizationModelIdOnDeployment(
 		deployment.Annotations[extensionsv1.OpenFgaAuthIdUpdatedAtAnnotation] = reconcileTimestamp.UTC().Format(time.RFC3339)
 		deployment.Annotations[extensionsv1.OpenFgaAuthModelVersionLabel] = authInstance.Version.String()
 
-		updates[deploymentIdentifier] = deployment
+		currentUpdated[deploymentIdentifier] = deployment
 	}
+
+	return errors
 }
 
 func updateDeploymentEnvVar(deployment *appsV1.Deployment, envVarName, envVarValue string) bool {

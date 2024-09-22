@@ -45,10 +45,11 @@ const (
 type EventReason string
 
 const (
-	EventReasonOpenFGAConnectionFailed          EventReason = "EventReasonOpenFGAConnectionFailed"
-	EventReasonOpenFGAStoreFailed               EventReason = "EventReasonOpenFGAStoreFailed"
-	EventReasonAuthorizationModelCreationFailed EventReason = "EventReasonAuthorizationModelCreationFailed"
-	EventReasonAuthorizationModelUpdateFailed   EventReason = "EventReasonAuthorizationModelUpdateFailed"
+	EventReasonAuthorizationModelRequestNotFound EventReason = "AuthorizationModelRequestNotFound"
+	EventReasonClientInitializationFailed        EventReason = "ClientInitializationFailed"
+	EventReasonStoreFailed                       EventReason = "StoreFailed"
+	EventReasonAuthorizationModelCreationFailed  EventReason = "AuthorizationModelCreationFailed"
+	EventReasonAuthorizationModelUpdateFailed    EventReason = "AuthorizationModelUpdateFailed"
 )
 
 // AuthorizationModelRequestReconciler reconciles a AuthorizationModelRequest object
@@ -77,12 +78,18 @@ type Clock interface {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("Reconciliation triggered for authorizationmodel request")
+	logger.Info("Reconciliation triggered for authorization model request")
 	reconcileTimestamp := r.Now()
 
 	authorizationRequest := &extensionsv1.AuthorizationModelRequest{}
 	if err := r.Get(ctx, req.NamespacedName, authorizationRequest); err != nil {
 		logger.Error(err, "unable to fetch authorization model request", "authorizationModelRequestName", req.Name)
+		r.Recorder.Event(
+			authorizationRequest,
+			"Warning",
+			string(EventReasonAuthorizationModelRequestNotFound),
+			err.Error(),
+		)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -94,14 +101,14 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 
 	openFgaService, err := r.PermissionServiceFactory.GetService(r.Config)
 	if err != nil {
-		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonOpenFGAConnectionFailed, err)
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonClientInitializationFailed, err)
 		logger.Error(err, "unable to get permission service")
 		return ctrl.Result{}, err
 	}
 
 	err = r.ensureStoreExistsAndSetStoreId(ctx, req, openFgaService, authorizationRequest, &logger)
 	if err != nil {
-		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonOpenFGAStoreFailed, err)
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonStoreFailed, err)
 		logger.Error(err, "unable to get store")
 		return ctrl.Result{}, err
 	}

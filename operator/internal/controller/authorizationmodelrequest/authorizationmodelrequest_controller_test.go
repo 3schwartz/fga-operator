@@ -223,7 +223,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				}
 				return authModelRequest.Status.State, nil
 			}, duration, interval).Should(Equal(extensionsv1.SynchronizationFailed))
-			validateEvent(fakeRecorder.Events, EventReasonOpenFGAConnectionFailed)
+			validateEvent(fakeRecorder.Events, EventReasonClientInitializationFailed)
 		})
 
 		It("should have status synchronization failed, when not able to create store", func() {
@@ -262,7 +262,7 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 				}
 				return authModelRequest.Status.State, nil
 			}, duration, interval).Should(Equal(extensionsv1.SynchronizationFailed))
-			validateEvent(fakeRecorder.Events, EventReasonOpenFGAStoreFailed)
+			validateEvent(fakeRecorder.Events, EventReasonStoreFailed)
 		})
 
 		It("should have status synchronization failed, when not able to create authorization model", func() {

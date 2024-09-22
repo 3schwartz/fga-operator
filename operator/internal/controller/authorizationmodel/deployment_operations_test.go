@@ -243,20 +243,22 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 	logger := log.FromContext(context.Background())
 
 	tests := []struct {
-		name               string
-		deployments        appsV1.DeploymentList
-		updates            map[DeploymentIdentifier]appsV1.Deployment
-		authorizationModel *MockAuthorizationModel
-		expectedUpdates    map[DeploymentIdentifier]appsV1.Deployment
+		name                 string
+		deployments          appsV1.DeploymentList
+		updates              map[DeploymentIdentifier]appsV1.Deployment
+		authorizationModel   *MockAuthorizationModel
+		expectedUpdates      map[DeploymentIdentifier]appsV1.Deployment
+		expectedFailureCount int
 	}{
 		{
 			name: "No deployments",
 			deployments: appsV1.DeploymentList{
 				Items: []appsV1.Deployment{},
 			},
-			updates:            map[DeploymentIdentifier]appsV1.Deployment{},
-			authorizationModel: &MockAuthorizationModel{},
-			expectedUpdates:    map[DeploymentIdentifier]appsV1.Deployment{},
+			updates:              map[DeploymentIdentifier]appsV1.Deployment{},
+			authorizationModel:   &MockAuthorizationModel{},
+			expectedUpdates:      map[DeploymentIdentifier]appsV1.Deployment{},
+			expectedFailureCount: 0,
 		},
 		{
 			name: "Deployment with error in GetVersionFromDeployment",
@@ -265,9 +267,10 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 					createDeploymentWithNameAndAnnotations("namespace1", "error-deployment", []corev1.EnvVar{}, map[string]string{}),
 				},
 			},
-			updates:            map[DeploymentIdentifier]appsV1.Deployment{},
-			authorizationModel: &MockAuthorizationModel{},
-			expectedUpdates:    map[DeploymentIdentifier]appsV1.Deployment{},
+			updates:              map[DeploymentIdentifier]appsV1.Deployment{},
+			authorizationModel:   &MockAuthorizationModel{},
+			expectedUpdates:      map[DeploymentIdentifier]appsV1.Deployment{},
+			expectedFailureCount: 1,
 		},
 		{
 			name: "Deployment without the target env var",
@@ -291,6 +294,7 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 					},
 				),
 			},
+			expectedFailureCount: 0,
 		},
 		{
 			name: "Deployment with the target env var already set to correct value",
@@ -306,9 +310,10 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 					),
 				},
 			},
-			updates:            map[DeploymentIdentifier]appsV1.Deployment{},
-			authorizationModel: &MockAuthorizationModel{},
-			expectedUpdates:    map[DeploymentIdentifier]appsV1.Deployment{},
+			updates:              map[DeploymentIdentifier]appsV1.Deployment{},
+			authorizationModel:   &MockAuthorizationModel{},
+			expectedUpdates:      map[DeploymentIdentifier]appsV1.Deployment{},
+			expectedFailureCount: 0,
 		},
 		{
 			name: "Pre-existing updates map with a deployment",
@@ -353,15 +358,19 @@ func TestUpdateAuthorizationModelIdOnDeployment(t *testing.T) {
 					},
 				),
 			},
+			expectedFailureCount: 0,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			updateAuthorizationModelIdOnDeployment(tt.deployments, tt.updates, tt.authorizationModel, reconcileTimestamp, &logger)
+			failures := updateAuthorizationModelIdOnDeployment(tt.deployments, tt.updates, tt.authorizationModel, reconcileTimestamp, &logger)
 
 			if diff := cmp.Diff(tt.expectedUpdates, tt.updates); diff != "" {
 				t.Errorf("unexpected updates (-want +got):\n%s", diff)
+			}
+			if diff := cmp.Equal(len(failures), tt.expectedFailureCount); diff != true {
+				t.Errorf("unexpected failure (-want +got):\n%d", len(failures))
 			}
 		})
 	}

@@ -22,6 +22,7 @@ import (
 	"fga-operator/internal/observability"
 	"github.com/go-logr/logr"
 	appsV1 "k8s.io/api/apps/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/clock"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -36,7 +37,8 @@ import (
 // AuthorizationModelReconciler reconciles a AuthorizationModel object
 type AuthorizationModelReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 	Clock
 	ReconciliationInterval *time.Duration
 }
@@ -45,7 +47,20 @@ type Clock interface {
 	Now() time.Time
 }
 
-const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
+const (
+	eventTypeWarning   = "Warning"
+	deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
+)
+
+type EventReason string
+
+const (
+	EventReasonStoreNotFound                    EventReason = "StoreNotFound"
+	EventReasonAuthorizationModelNotFound       EventReason = "AuthorizationModelNotFound"
+	EventReasonAuthorizationModelIdUpdateFailed EventReason = "AuthorizationModelIdUpdateFailed"
+	EventReasonFailedListingDeployments         EventReason = "FailedListingDeployments"
+	EventReasonFailedUpdatingDeployment         EventReason = "FailedUpdatingDeployment"
+)
 
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodels,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodels/status,verbs=get;update;patch
@@ -66,26 +81,50 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 	store := &extensionsv1.Store{}
 	if err := r.Get(ctx, req.NamespacedName, store); err != nil {
 		logger.Error(err, "unable to fetch store", "storeName", req.Name)
+		r.Recorder.Event(
+			store,
+			eventTypeWarning,
+			string(EventReasonStoreNotFound),
+			err.Error(),
+		)
 		return ctrl.Result{}, err
 	}
 
 	authorizationModel := &extensionsv1.AuthorizationModel{}
 	if err := r.Get(ctx, req.NamespacedName, authorizationModel); err != nil {
-		// TODO: handle error
+		r.Recorder.Event(
+			authorizationModel,
+			eventTypeWarning,
+			string(EventReasonAuthorizationModelNotFound),
+			err.Error(),
+		)
 		logger.Error(err, "unable to fetch authorization modem", "authorizationModelName", req.Name)
 		return ctrl.Result{}, err
 	}
 
 	var deployments appsV1.DeploymentList
 	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingFields{deploymentIndexKey: store.Name}); err != nil {
-		// TODO: handle error
+		r.Recorder.Event(
+			authorizationModel,
+			eventTypeWarning,
+			string(EventReasonAuthorizationModelIdUpdateFailed),
+			err.Error(),
+		)
 		logger.Error(err, "unable to list deployments")
 		return ctrl.Result{}, err
 	}
 
 	updates := updateStoreIdOnDeployments(deployments, store, reconcileTimestamp)
 
-	updateAuthorizationModelIdOnDeployment(deployments, updates, authorizationModel, reconcileTimestamp, &logger)
+	updateFailures := updateAuthorizationModelIdOnDeployment(deployments, updates, authorizationModel, reconcileTimestamp, &logger)
+	for _, updateError := range updateFailures {
+		r.Recorder.Event(
+			&updateError.deployment,
+			eventTypeWarning,
+			string(EventReasonFailedListingDeployments),
+			updateError.err.Error(),
+		)
+	}
 
 	for _, deployment := range updates {
 		r.updateDeployment(ctx, &deployment, req.Name, &logger)
@@ -102,7 +141,12 @@ func (r *AuthorizationModelReconciler) updateDeployment(
 
 ) {
 	if err := r.Update(ctx, deployment); err != nil {
-		// TODO: make event
+		r.Recorder.Event(
+			deployment,
+			eventTypeWarning,
+			string(EventReasonFailedUpdatingDeployment),
+			err.Error(),
+		)
 		log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
 		return
 	}
