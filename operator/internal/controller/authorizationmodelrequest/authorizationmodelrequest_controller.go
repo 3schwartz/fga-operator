@@ -40,14 +40,13 @@ import (
 )
 
 const (
-	EventRecorderLabel = "EventRecorderLabelAuthorizationModelRequestReconciler"
+	EventRecorderLabel = "AuthorizationModelRequestReconciler"
 )
 
 type EventReason string
 
 const (
 	EventReasonAuthorizationModelStatusChangeFailed EventReason = "AuthorizationModelStatusChangeFailed"
-	EventReasonAuthorizationModelRequestNotFound    EventReason = "AuthorizationModelRequestNotFound"
 	EventReasonClientInitializationFailed           EventReason = "ClientInitializationFailed"
 	EventReasonStoreFailed                          EventReason = "StoreFailed"
 	EventReasonAuthorizationModelCreationFailed     EventReason = "AuthorizationModelCreationFailed"
@@ -86,12 +85,6 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	authorizationRequest := &extensionsv1.AuthorizationModelRequest{}
 	if err := r.Get(ctx, req.NamespacedName, authorizationRequest); err != nil {
 		logger.Error(err, "unable to fetch authorization model request", "authorizationModelRequestName", req.Name)
-		r.Recorder.Event(
-			authorizationRequest,
-			v1.EventTypeWarning,
-			string(EventReasonAuthorizationModelRequestNotFound),
-			err.Error(),
-		)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 

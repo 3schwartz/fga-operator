@@ -49,7 +49,7 @@ type Clock interface {
 }
 
 const (
-	EventRecorderLabel = "EventRecorderLabelAuthorizationModelReconciler"
+	EventRecorderLabel = "AuthorizationModelReconciler"
 	deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
 )
 
@@ -57,7 +57,6 @@ type EventReason string
 
 const (
 	EventReasonStoreFetchFailure                EventReason = "StoreFetchFailure"
-	EventReasonAuthorizationFetchFailure        EventReason = "AuthorizationFetchFailure"
 	EventReasonAuthorizationModelIdUpdateFailed EventReason = "AuthorizationModelIdUpdateFailed"
 	EventReasonFailedListingDeployments         EventReason = "FailedListingDeployments"
 	EventReasonFailedUpdatingDeployment         EventReason = "FailedUpdatingDeployment"
@@ -83,12 +82,6 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 	authorizationModel := &extensionsv1.AuthorizationModel{}
 	if err := r.Get(ctx, req.NamespacedName, authorizationModel); err != nil {
 		logger.Error(err, "unable to fetch authorization model", "authorizationModelName", req.Name)
-		r.Recorder.Event(
-			authorizationModel,
-			v1.EventTypeWarning,
-			string(EventReasonAuthorizationFetchFailure),
-			err.Error(),
-		)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -96,7 +89,7 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err := r.Get(ctx, req.NamespacedName, store); err != nil {
 		logger.Error(err, "unable to fetch store", "storeName", req.Name)
 		r.Recorder.Event(
-			store,
+			authorizationModel,
 			v1.EventTypeWarning,
 			string(EventReasonStoreFetchFailure),
 			err.Error(),
@@ -109,7 +102,7 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 		r.Recorder.Event(
 			authorizationModel,
 			v1.EventTypeWarning,
-			string(EventReasonAuthorizationModelIdUpdateFailed),
+			string(EventReasonFailedListingDeployments),
 			err.Error(),
 		)
 		logger.Error(err, "unable to list deployments")
@@ -120,19 +113,34 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	updateFailures := updateAuthorizationModelIdOnDeployment(deployments, updates, authorizationModel, reconcileTimestamp, &logger)
 	for _, updateError := range updateFailures {
+		r.createAuthorizationModelEvent(authorizationModel, EventReasonAuthorizationModelIdUpdateFailed, updateError.err)
 		r.Recorder.Event(
 			&updateError.deployment,
 			v1.EventTypeWarning,
-			string(EventReasonFailedListingDeployments),
+			string(EventReasonAuthorizationModelIdUpdateFailed),
 			updateError.err.Error(),
 		)
 	}
 
 	for _, deployment := range updates {
-		r.updateDeployment(ctx, &deployment, req.Name, &logger)
+		if err := r.updateDeployment(ctx, &deployment, req.Name, &logger); err != nil {
+			r.createAuthorizationModelEvent(authorizationModel, EventReasonFailedUpdatingDeployment, err)
+		}
 	}
 
 	return requeueResult, nil
+}
+
+func (r *AuthorizationModelReconciler) createAuthorizationModelEvent(
+	authorizationModel *extensionsv1.AuthorizationModel,
+	eventReason EventReason,
+	err error) {
+	r.Recorder.Event(
+		authorizationModel,
+		v1.EventTypeWarning,
+		string(eventReason),
+		err.Error(),
+	)
 }
 
 func (r *AuthorizationModelReconciler) updateDeployment(
@@ -141,7 +149,7 @@ func (r *AuthorizationModelReconciler) updateDeployment(
 	modelName string,
 	log *logr.Logger,
 
-) {
+) error {
 	if err := r.Update(ctx, deployment); err != nil {
 		r.Recorder.Event(
 			deployment,
@@ -150,10 +158,11 @@ func (r *AuthorizationModelReconciler) updateDeployment(
 			err.Error(),
 		)
 		log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
-		return
+		return err
 	}
 	observability.RecordDeploymentUpdated(deployment.Name, modelName)
 	log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
