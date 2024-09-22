@@ -432,3 +432,120 @@ All command line flags has defaults and hence none of them are mandatory.
 | OPENFGA_API_URL         | Url to OpenFGA.                                                                                               | -       | Yes       | "http://127.0.0.1:8089", "http://openfga.demo.svc.cluster.local:8080" |
 | OPENFGA_API_TOKEN       | Preshared key used for authentication to OpenFGA.                                                             | -       | Yes       | "foobar", "some_token"                                                |
 | RECONCILIATION_INTERVAL | The time interval between reconciliation loops, unless an `AuthorizationModelRequest` is created or modified. | "45s"   | No        | "45s", "5m", "3h"                                                     |
+
+
+## Events
+
+This table outlines the events emitted by the controllers during the reconciliation process, along with their type and description.
+
+| Reason                               | Type    | Controller                          | Description                                                                    | CRD                                    |
+|--------------------------------------|---------|-------------------------------------|--------------------------------------------------------------------------------|----------------------------------------|
+| StoreFetchFailure                    | Warning | AuthorizationModelReconciler        | Triggered when the store resource cannot be fetched during reconciliation.     | `AuthorizationModel`                   |
+| AuthorizationModelIdUpdateFailed     | Warning | AuthorizationModelReconciler        | Emitted when finding the correct Authorization Model id on a deployment fails. | `AuthorizationModel`<br/> `Deployment` |
+| FailedListingDeployments             | Warning | AuthorizationModelReconciler        | Raised when there is an issue listing deployments during reconciliation.       | `AuthorizationModel`                   |
+| FailedUpdatingDeployment             | Warning | AuthorizationModelReconciler        | Emitted when a deployment update fails during reconciliation.                  | `AuthorizationModel`<br/> `Deployment` |
+| AuthorizationModelStatusChangeFailed | Warning | AuthorizationModelRequestReconciler | Triggered when the status update for an AuthorizationModelRequest fails.       | `AuthorizationModelRequest`            |
+| ClientInitializationFailed           | Warning | AuthorizationModelRequestReconciler | Emitted when the OpenFGA client initialization fails.                          | `AuthorizationModelRequest`            |
+| StoreFailed                          | Warning | AuthorizationModelRequestReconciler | Raised when there is an issue creating or fetching the store from OpenFGA.     | `AuthorizationModelRequest`            |
+| AuthorizationModelCreationFailed     | Warning | AuthorizationModelRequestReconciler | Triggered when the creation of the AuthorizationModel in OpenFGA fails.        | `AuthorizationModelRequest`            |
+| AuthorizationModelUpdateFailed       | Warning | AuthorizationModelRequestReconciler | Emitted when the update of an AuthorizationModel in Kubernetes fails.          | `AuthorizationModelRequest`            |
+
+## Status
+
+### AuthorizationModelRequest
+
+This table describes the possible statuses for the `AuthorizationModelRequest` resource during its lifecycle.
+
+|        Status         | Description                                                                                                             |
+|:---------------------:|:------------------------------------------------------------------------------------------------------------------------|
+|        Pending        | Indicates that the request has been created but has not yet started processing.                                         |
+|     Synchronizing     | Indicates that the request is actively being processed (e.g., creating or updating resources in OpenFGA or Kubernetes). |
+|     Synchronized      | Indicates that the request has been successfully reconciled, and all resources are up to date.                          |
+| SynchronizationFailed | Set when the synchronization process fails due to errors in OpenFGA or Kubernetes operations.                           |
+
+
+## Reconciliation Design
+
+This design outlines the interaction between the client, custom resource definitions (CRDs), and the operator for managing OpenFGA Stores and Authorization Models.
+
+```mermaid
+sequenceDiagram
+actor Client
+
+box Custom Resource Definitions
+participant AuthorizationModelRequest
+participant Store
+participant AuthorizationModel
+participant Deployment
+end
+
+box Operator
+participant AuthorizationModelRequestReconciler
+participant AuthorizationModelReconciler
+end
+
+participant OpenFGA
+
+    Client ->> AuthorizationModelRequest: Creates a request
+    
+    
+    AuthorizationModelRequestReconciler ->> AuthorizationModelRequest: Listen to create and update
+    activate AuthorizationModelRequestReconciler
+
+    opt If Store doesn't exists in OpenFGA
+        AuthorizationModelRequestReconciler ->> OpenFGA: Create Store
+        AuthorizationModelRequestReconciler ->> Store: Create
+    end
+    
+    opt Authorization Model has changed or initialized
+        AuthorizationModelRequestReconciler ->> OpenFGA: Create Authorization Model
+        AuthorizationModelRequestReconciler ->> AuthorizationModel: Create or Update AuthorizationModel
+    end
+    
+    deactivate AuthorizationModelRequestReconciler
+
+    activate AuthorizationModelReconciler
+    
+    AuthorizationModelReconciler ->> AuthorizationModel: Listen to create and update
+    
+    AuthorizationModelReconciler ->> Store: Fetch Store
+    AuthorizationModelReconciler ->> AuthorizationModel: Fetch AuthorizationModel
+    
+    loop Check deployments every RECONCILIATION_INTERVAL
+        AuthorizationModelReconciler ->> Deployment: List deployments with `openfga-store` label
+        
+        opt ENV `OPENFGA_AUTH_MODEL_ID` or `OPENFGA_STORE_ID` are not up to date.
+            AuthorizationModelReconciler ->> Deployment: Update ENVs and annotations
+        end
+    end
+
+    deactivate AuthorizationModelReconciler
+```
+
+### Steps
+
+#### Client Request
+- The client creates an `AuthorizationModelRequest`.
+
+#### `AuthorizationModelRequestReconciler` Request Reconciliation:
+- The `AuthorizationModelRequestReconciler` listens for create/update events on `AuthorizationModelRequest`.
+- If the corresponding **Store** doesn't exist in OpenFGA:
+   - The operator creates the store in OpenFGA and in Kubernetes (**Store** resource).
+- If the **Authorization Model** has changed or is being initialized:
+   - The operator creates the Authorization Model in OpenFGA and create or updates the `AuthorizationModel` resource in Kubernetes.
+
+#### `AuthorizationModelReconciler` Model Reconciliation:
+- The `AuthorizationModelReconciler` listens for create/update events on `AuthorizationModel`.
+- It fetches the `Store` and the `AuthorizationModel` resources.
+- Every `RECONCILIATION_INTERVAL`, it checks deployments with the `openfga-store` label:
+
+  - If the environment variables `OPENFGA_AUTH_MODEL_ID` or `OPENFGA_STORE_ID` are outdated, the operator updates the deployment's environment variables and annotations:
+    - Environment Variables:
+        - `OPENFGA_AUTH_MODEL_ID`
+        - `OPENFGA_STORE_ID`
+    - Annotations:
+      - `openfga-auth-id-updated-at`
+      - `openfga-store-id-updated-at`
+      - `openfga-auth-model-version` 
+
+This flow ensures that OpenFGA stores and authorization models are kept in sync with Kubernetes deployments.
