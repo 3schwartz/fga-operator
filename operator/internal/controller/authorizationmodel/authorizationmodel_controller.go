@@ -22,6 +22,7 @@ import (
 	"fga-operator/internal/observability"
 	"github.com/go-logr/logr"
 	appsV1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/clock"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -48,7 +49,7 @@ type Clock interface {
 }
 
 const (
-	eventTypeWarning   = "Warning"
+	EventRecorderLabel = "EventRecorderLabelAuthorizationModelReconciler"
 	deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
 )
 
@@ -65,6 +66,7 @@ const (
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodels,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodels/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodels/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -83,7 +85,7 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 		logger.Error(err, "unable to fetch store", "storeName", req.Name)
 		r.Recorder.Event(
 			store,
-			eventTypeWarning,
+			v1.EventTypeWarning,
 			string(EventReasonStoreNotFound),
 			err.Error(),
 		)
@@ -94,7 +96,7 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err := r.Get(ctx, req.NamespacedName, authorizationModel); err != nil {
 		r.Recorder.Event(
 			authorizationModel,
-			eventTypeWarning,
+			v1.EventTypeWarning,
 			string(EventReasonAuthorizationModelNotFound),
 			err.Error(),
 		)
@@ -106,7 +108,7 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingFields{deploymentIndexKey: store.Name}); err != nil {
 		r.Recorder.Event(
 			authorizationModel,
-			eventTypeWarning,
+			v1.EventTypeWarning,
 			string(EventReasonAuthorizationModelIdUpdateFailed),
 			err.Error(),
 		)
@@ -120,7 +122,7 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 	for _, updateError := range updateFailures {
 		r.Recorder.Event(
 			&updateError.deployment,
-			eventTypeWarning,
+			v1.EventTypeWarning,
 			string(EventReasonFailedListingDeployments),
 			updateError.err.Error(),
 		)
@@ -143,7 +145,7 @@ func (r *AuthorizationModelReconciler) updateDeployment(
 	if err := r.Update(ctx, deployment); err != nil {
 		r.Recorder.Event(
 			deployment,
-			eventTypeWarning,
+			v1.EventTypeWarning,
 			string(EventReasonFailedUpdatingDeployment),
 			err.Error(),
 		)

@@ -22,6 +22,7 @@ import (
 	"fga-operator/internal/openfga"
 	"fmt"
 	"github.com/go-logr/logr"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -39,17 +40,18 @@ import (
 )
 
 const (
-	EventRecorderLabel = "AuthorizationModelRequestReconciler"
+	EventRecorderLabel = "EventRecorderLabelAuthorizationModelRequestReconciler"
 )
 
 type EventReason string
 
 const (
-	EventReasonAuthorizationModelRequestNotFound EventReason = "AuthorizationModelRequestNotFound"
-	EventReasonClientInitializationFailed        EventReason = "ClientInitializationFailed"
-	EventReasonStoreFailed                       EventReason = "StoreFailed"
-	EventReasonAuthorizationModelCreationFailed  EventReason = "AuthorizationModelCreationFailed"
-	EventReasonAuthorizationModelUpdateFailed    EventReason = "AuthorizationModelUpdateFailed"
+	EventReasonAuthorizationModelStatusChangeFailed EventReason = "AuthorizationModelStatusChangeFailed"
+	EventReasonAuthorizationModelRequestNotFound    EventReason = "AuthorizationModelRequestNotFound"
+	EventReasonClientInitializationFailed           EventReason = "ClientInitializationFailed"
+	EventReasonStoreFailed                          EventReason = "StoreFailed"
+	EventReasonAuthorizationModelCreationFailed     EventReason = "AuthorizationModelCreationFailed"
+	EventReasonAuthorizationModelUpdateFailed       EventReason = "AuthorizationModelUpdateFailed"
 )
 
 // AuthorizationModelRequestReconciler reconciles a AuthorizationModelRequest object
@@ -86,7 +88,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		logger.Error(err, "unable to fetch authorization model request", "authorizationModelRequestName", req.Name)
 		r.Recorder.Event(
 			authorizationRequest,
-			"Warning",
+			v1.EventTypeWarning,
 			string(EventReasonAuthorizationModelRequestNotFound),
 			err.Error(),
 		)
@@ -96,6 +98,12 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	authorizationRequest.Status.State = extensionsv1.Synchronizing
 	if err := r.Status().Update(ctx, authorizationRequest); err != nil {
 		logger.Error(err, fmt.Sprintf("unable to set authorization model request in state %s", extensionsv1.Synchronizing), "authorizationModelRequestName", req.Name)
+		r.Recorder.Event(
+			authorizationRequest,
+			v1.EventTypeWarning,
+			string(EventReasonAuthorizationModelStatusChangeFailed),
+			err.Error(),
+		)
 		return ctrl.Result{}, err
 	}
 
@@ -129,6 +137,12 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 	authorizationRequest.Status.State = extensionsv1.Synchronized
 	if err := r.Status().Update(ctx, authorizationRequest); err != nil {
 		logger.Error(err, fmt.Sprintf("unable to set authorization model request in state %s", extensionsv1.Synchronized), "authorizationModelRequestName", req.Name)
+		r.Recorder.Event(
+			authorizationRequest,
+			v1.EventTypeWarning,
+			string(EventReasonAuthorizationModelStatusChangeFailed),
+			err.Error(),
+		)
 		return ctrl.Result{}, err
 	}
 
@@ -138,7 +152,7 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 func (r *AuthorizationModelRequestReconciler) failAuthorizationModelRequestSynchronization(ctx context.Context, authorizationRequest *extensionsv1.AuthorizationModelRequest, eventReason EventReason, err error) error {
 	r.Recorder.Event(
 		authorizationRequest,
-		"Warning",
+		v1.EventTypeWarning,
 		string(eventReason),
 		err.Error(),
 	)

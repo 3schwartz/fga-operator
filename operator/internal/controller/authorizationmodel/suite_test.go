@@ -21,6 +21,7 @@ import (
 	"fmt"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/client-go/tools/record"
 	"path/filepath"
 	"runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -48,6 +49,7 @@ var (
 	ctx                  context.Context
 	cancel               context.CancelFunc
 	controllerReconciler *AuthorizationModelReconciler
+	eventRecorder        record.FakeRecorder
 )
 
 func TestControllers(t *testing.T) {
@@ -96,9 +98,11 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	reconcileInterval := time.Second * 45
+	eventRecorder = *record.NewFakeRecorder(20)
 	controllerReconciler = &AuthorizationModelReconciler{
 		Client:                 k8sManager.GetClient(),
 		Scheme:                 k8sManager.GetScheme(),
+		Recorder:               &eventRecorder,
 		Clock:                  MockClock{},
 		ReconciliationInterval: &reconcileInterval,
 	}

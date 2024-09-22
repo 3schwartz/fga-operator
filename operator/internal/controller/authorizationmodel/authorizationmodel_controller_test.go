@@ -45,6 +45,7 @@ var _ = Describe("AuthorizationModel Controller", func() {
 		var name string
 
 		BeforeEach(func() {
+			eventRecorder.Events = make(chan string, 5)
 			name = getLowercaseUUID()
 			storeId = getLowercaseUUID()
 			namespace := &corev1.Namespace{
@@ -112,6 +113,7 @@ var _ = Describe("AuthorizationModel Controller", func() {
 
 			// Assert
 			validateDeployment(deploymentName, name, storeId, authModelId, modelVersion)
+			validateNoEventsFound(eventRecorder.Events)
 		})
 
 		It("given no auth model version label then update deployment to latest", func() {
@@ -159,6 +161,7 @@ var _ = Describe("AuthorizationModel Controller", func() {
 
 			// Assert
 			validateDeployment(deploymentName, name, storeId, authModelId, modelVersion)
+			validateNoEventsFound(eventRecorder.Events)
 		})
 	})
 })
@@ -249,4 +252,15 @@ func validateDeployment(deploymentName, namespaceName, storeId, authModelId stri
 
 		return nil
 	}, duration, interval).Should(Succeed())
+}
+
+func validateNoEventsFound(events <-chan string) {
+	Consistently(func() bool {
+		select {
+		case <-events:
+			return false // Event received
+		default:
+			return true // No event received
+		}
+	}, duration, interval).Should(BeTrue())
 }

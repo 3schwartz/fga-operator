@@ -146,6 +146,7 @@ func main() {
 	if err = (&authorizationmodel.AuthorizationModelReconciler{
 		Client:                 mgr.GetClient(),
 		Scheme:                 mgr.GetScheme(),
+		Recorder:               mgr.GetEventRecorderFor(authorizationmodel.EventRecorderLabel),
 		ReconciliationInterval: &reconciliationInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AuthorizationModel")

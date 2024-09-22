@@ -99,11 +99,10 @@ var _ = BeforeSuite(func() {
 	goMockController = gomock.NewController(GinkgoT())
 	permissionServiceFactory = setupMockFactory()
 
-	fakeRecorder := record.NewFakeRecorder(20)
 	controllerReconciler = &AuthorizationModelRequestReconciler{
 		Client:                   k8sClient,
 		Scheme:                   k8sClient.Scheme(),
-		Recorder:                 fakeRecorder,
+		Recorder:                 record.NewFakeRecorder(20),
 		Clock:                    clock.RealClock{},
 		PermissionServiceFactory: permissionServiceFactory,
 	}
