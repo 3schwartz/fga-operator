@@ -258,7 +258,7 @@ func validateNoEventsFound(events <-chan string) {
 	Consistently(func() bool {
 		select {
 		case <-events:
-			return false // Event received
+			return false // Event received or channel closed
 		default:
 			return true // No event received
 		}
