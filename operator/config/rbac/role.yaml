@@ -5,6 +5,13 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
   - extensions.fga-operator
   resources:
   - authorizationmodelrequests
@@ -26,6 +33,32 @@ rules:
   - extensions.fga-operator
   resources:
   - authorizationmodelrequests/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - extensions.fga-operator
+  resources:
+  - authorizationmodels
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - extensions.fga-operator
+  resources:
+  - authorizationmodels/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - extensions.fga-operator
+  resources:
+  - authorizationmodels/status
   verbs:
   - get
   - patch
