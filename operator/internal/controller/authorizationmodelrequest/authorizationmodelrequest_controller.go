@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package authorizationmodelrequest
 
 import (
 	"context"
@@ -22,9 +22,10 @@ import (
 	"fga-operator/internal/openfga"
 	"fmt"
 	"github.com/go-logr/logr"
-	appsV1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/clock"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -38,25 +39,38 @@ import (
 	extensionsv1 "fga-operator/api/v1"
 )
 
+const (
+	EventRecorderLabel = "AuthorizationModelRequestReconciler"
+)
+
+type EventReason string
+
+const (
+	EventReasonAuthorizationModelStatusChangeFailed EventReason = "AuthorizationModelStatusChangeFailed"
+	EventReasonClientInitializationFailed           EventReason = "ClientInitializationFailed"
+	EventReasonStoreFailed                          EventReason = "StoreFailed"
+	EventReasonAuthorizationModelCreationFailed     EventReason = "AuthorizationModelCreationFailed"
+	EventReasonAuthorizationModelUpdateFailed       EventReason = "AuthorizationModelUpdateFailed"
+)
+
 // AuthorizationModelRequestReconciler reconciles a AuthorizationModelRequest object
 type AuthorizationModelRequestReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 	openfga.PermissionServiceFactory
 	openfga.Config
 	Clock
-	ReconciliationInterval *time.Duration
 }
 
 type Clock interface {
 	Now() time.Time
 }
 
-const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
-
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodelrequests,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodelrequests/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=extensions.fga-operator,resources=authorizationmodelrequests/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -65,10 +79,8 @@ const deploymentIndexKey = ".metadata.labels." + extensionsv1.OpenFgaStoreLabel
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("Reconciliation triggered")
+	logger.Info("Reconciliation triggered for authorization model request")
 	reconcileTimestamp := r.Now()
-
-	requeueResult := ctrl.Result{RequeueAfter: *r.ReconciliationInterval}
 
 	authorizationRequest := &extensionsv1.AuthorizationModelRequest{}
 	if err := r.Get(ctx, req.NamespacedName, authorizationRequest); err != nil {
@@ -76,55 +88,72 @@ func (r *AuthorizationModelRequestReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	openFgaService, err := r.PermissionServiceFactory.GetService(r.Config)
-	if err != nil {
+	authorizationRequest.Status.State = extensionsv1.Synchronizing
+	if err := r.Status().Update(ctx, authorizationRequest); err != nil {
+		logger.Error(err, fmt.Sprintf("unable to set authorization model request in state %s", extensionsv1.Synchronizing), "authorizationModelRequestName", req.Name)
+		r.Recorder.Event(
+			authorizationRequest,
+			v1.EventTypeWarning,
+			string(EventReasonAuthorizationModelStatusChangeFailed),
+			err.Error(),
+		)
 		return ctrl.Result{}, err
 	}
 
-	store, err := r.getStore(ctx, req, openFgaService, authorizationRequest, &logger)
+	openFgaService, err := r.PermissionServiceFactory.GetService(r.Config)
 	if err != nil {
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonClientInitializationFailed, err)
+		logger.Error(err, "unable to get permission service")
+		return ctrl.Result{}, err
+	}
+
+	err = r.ensureStoreExistsAndSetStoreId(ctx, req, openFgaService, authorizationRequest, &logger)
+	if err != nil {
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonStoreFailed, err)
+		logger.Error(err, "unable to get store")
 		return ctrl.Result{}, err
 	}
 
 	authorizationModel, err := r.getAuthorizationModel(ctx, req, openFgaService, authorizationRequest, reconcileTimestamp, &logger)
 	if err != nil {
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonAuthorizationModelCreationFailed, err)
+		logger.Error(err, "unable to get authorization model")
 		return ctrl.Result{}, err
 	}
 
 	if err = r.updateAuthorizationModel(ctx, openFgaService, authorizationRequest, authorizationModel, reconcileTimestamp, &logger); err != nil {
+		err = r.failAuthorizationModelRequestSynchronization(ctx, authorizationRequest, EventReasonAuthorizationModelUpdateFailed, err)
+		logger.Error(err, "unable to update authorization model")
 		return ctrl.Result{}, err
 	}
 
-	var deployments appsV1.DeploymentList
-	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), client.MatchingFields{deploymentIndexKey: store.Name}); err != nil {
-		logger.Error(err, "unable to list deployments")
+	authorizationRequest.Status.State = extensionsv1.Synchronized
+	if err := r.Status().Update(ctx, authorizationRequest); err != nil {
+		logger.Error(err, fmt.Sprintf("unable to set authorization model request in state %s", extensionsv1.Synchronized), "authorizationModelRequestName", req.Name)
+		r.Recorder.Event(
+			authorizationRequest,
+			v1.EventTypeWarning,
+			string(EventReasonAuthorizationModelStatusChangeFailed),
+			err.Error(),
+		)
 		return ctrl.Result{}, err
 	}
 
-	updates := updateStoreIdOnDeployments(deployments, store, reconcileTimestamp)
-
-	updateAuthorizationModelIdOnDeployment(deployments, updates, authorizationModel, reconcileTimestamp, &logger)
-
-	for _, deployment := range updates {
-		r.updateDeployment(ctx, &deployment, req.Name, &logger)
-	}
-
-	return requeueResult, nil
+	return ctrl.Result{}, nil
 }
 
-func (r *AuthorizationModelRequestReconciler) updateDeployment(
-	ctx context.Context,
-	deployment *appsV1.Deployment,
-	modelName string,
-	log *logr.Logger,
-
-) {
-	if err := r.Update(ctx, deployment); err != nil {
-		log.Error(err, "unable to update deployment", "deploymentName", deployment.Name)
-		return
+func (r *AuthorizationModelRequestReconciler) failAuthorizationModelRequestSynchronization(ctx context.Context, authorizationRequest *extensionsv1.AuthorizationModelRequest, eventReason EventReason, err error) error {
+	r.Recorder.Event(
+		authorizationRequest,
+		v1.EventTypeWarning,
+		string(eventReason),
+		err.Error(),
+	)
+	authorizationRequest.Status.State = extensionsv1.SynchronizationFailed
+	if statusError := r.Status().Update(ctx, authorizationRequest); statusError != nil {
+		return fmt.Errorf("failed to update status: %w with prior error %v", statusError, err)
 	}
-	observability.RecordDeploymentUpdated(deployment.Name, modelName)
-	log.V(0).Info("deployment updated", "deploymentName", deployment.Name)
+	return err
 }
 
 func updateAuthorizationModelWithMissingInstances(
@@ -290,26 +319,26 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 	return &authorizationModel, nil
 }
 
-func (r *AuthorizationModelRequestReconciler) getStore(
+func (r *AuthorizationModelRequestReconciler) ensureStoreExistsAndSetStoreId(
 	ctx context.Context,
 	req ctrl.Request,
 	openFgaService openfga.PermissionService,
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
-	log *logr.Logger) (*extensionsv1.Store, error) {
+	log *logr.Logger) error {
 
 	store := &extensionsv1.Store{}
 	err := r.Get(ctx, req.NamespacedName, store)
 	switch {
 	case client.IgnoreNotFound(err) != nil:
-		return nil, err
+		return err
 	case errors.IsNotFound(err):
 		store, err = r.createStoreResource(ctx, req, openFgaService, authorizationModelRequest, log)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	openFgaService.SetStoreId(store.Spec.Id)
-	return store, nil
+	return nil
 }
 
 func (r *AuthorizationModelRequestReconciler) createStoreResource(
@@ -351,21 +380,9 @@ func (r *AuthorizationModelRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 		r.Clock = clock.RealClock{}
 	}
 
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &appsV1.Deployment{}, deploymentIndexKey, func(rawObj client.Object) []string {
-		deployment := rawObj.(*appsV1.Deployment)
-		labelValue, exists := deployment.Labels[extensionsv1.OpenFgaStoreLabel]
-		if !exists {
-			return nil
-		}
-		return []string{labelValue}
-	}); err != nil {
-		return err
-	}
-
 	deletePredicate := predicate.Funcs{
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if object, ok := e.Object.(*extensionsv1.AuthorizationModelRequest); ok {
-				observability.RecordK8AuthorizationModelEvent(observability.Deleted, object.Name)
+			if _, ok := e.Object.(*extensionsv1.AuthorizationModelRequest); ok {
 				return false
 			}
 			return true
@@ -374,6 +391,7 @@ func (r *AuthorizationModelRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&extensionsv1.AuthorizationModelRequest{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		WithEventFilter(deletePredicate).
 		Complete(r)
 }

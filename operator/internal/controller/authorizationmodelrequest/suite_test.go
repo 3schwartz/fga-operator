@@ -14,17 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package authorizationmodelrequest
 
 import (
-	"context"
 	fgainternal "fga-operator/internal/openfga"
 	"fmt"
 	"github.com/golang/mock/gomock"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/clock"
 	"path/filepath"
 	"runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"testing"
 	"time"
 
@@ -46,13 +45,12 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	cfg                  *rest.Config
-	k8sClient            client.Client
-	testEnv              *envtest.Environment
-	ctx                  context.Context
-	cancel               context.CancelFunc
-	controllerReconciler *AuthorizationModelRequestReconciler
-	goMockController     *gomock.Controller
+	cfg                      *rest.Config
+	k8sClient                client.Client
+	testEnv                  *envtest.Environment
+	controllerReconciler     *AuthorizationModelRequestReconciler
+	goMockController         *gomock.Controller
+	permissionServiceFactory fgainternal.PermissionServiceFactory
 )
 
 const (
@@ -71,7 +69,7 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
 
 		// The BinaryAssetsDirectory is only required if you want to run the tests directly
@@ -79,7 +77,7 @@ var _ = BeforeSuite(func() {
 		// default path defined in controller-runtime which is /usr/local/kubebuilder/.
 		// Note that you must have the required binaries setup under the bin directory to perform
 		// the tests directly. When we run make test it will be setup and used automatically.
-		BinaryAssetsDirectory: filepath.Join("..", "..", "bin", "k8s",
+		BinaryAssetsDirectory: filepath.Join("..", "..", "..", "bin", "k8s",
 			fmt.Sprintf("1.29.0-%s-%s", runtime.GOOS, runtime.GOARCH)),
 	}
 
@@ -98,37 +96,20 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
-	ctx, cancel = context.WithCancel(context.TODO())
-
-	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme: scheme.Scheme,
-	})
-	Expect(err).ToNot(HaveOccurred())
-
 	goMockController = gomock.NewController(GinkgoT())
+	permissionServiceFactory = setupMockFactory()
 
-	requeueAfter := 45 * time.Second
 	controllerReconciler = &AuthorizationModelRequestReconciler{
-		Client:                   k8sManager.GetClient(),
-		Scheme:                   k8sManager.GetScheme(),
-		PermissionServiceFactory: setupMockFactory(),
+		Client:                   k8sClient,
+		Scheme:                   k8sClient.Scheme(),
+		Recorder:                 record.NewFakeRecorder(20),
 		Clock:                    clock.RealClock{},
-		ReconciliationInterval:   &requeueAfter,
+		PermissionServiceFactory: permissionServiceFactory,
 	}
-
-	err = controllerReconciler.SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-
-	go func() {
-		defer GinkgoRecover()
-		err = k8sManager.Start(ctx)
-		Expect(err).ToNot(HaveOccurred())
-	}()
 })
 
 var _ = AfterSuite(func() {
 	defer goMockController.Finish()
-	cancel()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
