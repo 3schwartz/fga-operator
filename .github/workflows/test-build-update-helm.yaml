@@ -55,7 +55,9 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4    
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH }}        
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -71,7 +73,7 @@ jobs:
       - name: Create new tag
         run: |
           git tag ${{ env.IMAGE_TAG }}
-          git push origin ${{ env.IMAGE_TAG }}
+          git push origin HEAD:${{ env.BRANCH }}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
