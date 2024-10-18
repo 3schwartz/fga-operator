@@ -223,7 +223,7 @@ jobs:
           docker pull ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
 
       - name: Run Snyk to check Docker images for vulnerabilities
-        id: snyk_scan
+        id: snyk_scan_docker_image
         uses: snyk/actions/docker@master
         continue-on-error: true
         env:
@@ -233,7 +233,7 @@ jobs:
           args: --file=./operator/Dockerfile --severity-threshold=high --sarif-file-output=snyk.sarif
 
       - name: Run Snyk to check Docker.goreleaser images for vulnerabilities
-        id: snyk_scan
+        id: snyk_scan_docker_goreleaser_image
         uses: snyk/actions/docker@master
         continue-on-error: true
         env:
