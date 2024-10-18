@@ -10,7 +10,7 @@ import (
 const ReconciliationInterval = "RECONCILIATION_INTERVAL"
 
 func GetReconciliationInterval(setupLog logr.Logger) time.Duration {
-	defaultDuration := 45 * time.Second
+	defaultDuration := 10 * time.Second
 	reconciliationInterval := os.Getenv(ReconciliationInterval)
 
 	if reconciliationInterval == "" {
