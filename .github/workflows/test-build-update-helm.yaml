@@ -211,6 +211,16 @@ jobs:
         with:
           image: ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
           args: --file=./operator/Dockerfile --severity-threshold=high --sarif-file-output=snyk.sarif
+
+      - name: Run Snyk to check Docker.goreleaser images for vulnerabilities
+        id: snyk_scan
+        uses: snyk/actions/docker@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
+          args: --file=./operator/Dockerfile.goreleaser --severity-threshold=high --sarif-file-output=snyk.sarif
     
       - name: Upload Snyk report as sarif
         uses: github/codeql-action/upload-sarif@v3
