@@ -22,6 +22,9 @@ builds:
       - linux
       - windows
       - darwin
+    goarch:
+      - amd64
+      - arm64
 
 # archives:
 #   - format: tar.gz
@@ -39,16 +42,29 @@ builds:
 #         format: zip
 
 dockers:
-  - image_templates:
-      - "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}"
-    goos:
-      - linux
-      - windows
-      - darwin
-    files:
-      - bin/manager
+  - goos: linux
+    goarch: amd64
+    image_templates:
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
+    use: buildx
+    dockerfile: Dockerfile
     build_flag_templates:
-      - --platform=linux/amd64
+      - "--platform=linux/amd64"
+
+  - goos: linux
+    goarch: arm64
+    image_templates:
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm6"
+    use: buildx
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}"
+    image_templates:
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm64"
 
 changelog:
   sort: asc
