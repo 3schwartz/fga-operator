@@ -1,0 +1,21 @@
+apiVersion: extensions.fga-operator/v1
+kind: AuthorizationModelRequest
+metadata:
+  name: documents
+spec:
+  instances:
+    - version:
+        major: 1
+        minor: 1
+        patch: 1
+      authorizationModel: |
+        model
+          schema 1.1
+          
+        type user
+          
+        type document
+          relations
+            define reader: [user]
+            define writer: [user]
+            define owner: [user]
