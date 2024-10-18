@@ -196,11 +196,6 @@ func TestCreateAuthorizationModelIntegration(t *testing.T) {
 	if modelID == "" {
 		t.Fatal("authorization model ID is empty")
 	}
-
-	// Act & Assert
-	if err := service.SetAuthorizationModelId(modelID); err != nil {
-		t.Fatalf("failed to set authorization model id: %v", err)
-	}
 }
 
 func TestCreateAuthorizationModelIntegration_BadModel(t *testing.T) {

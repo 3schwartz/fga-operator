@@ -133,6 +133,5 @@ func setupMockFactory() fgainternal.PermissionServiceFactory {
 		CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(authModelId, nil).
 		AnyTimes()
-	mockService.EXPECT().SetAuthorizationModelId(gomock.Any()).Return(nil).AnyTimes()
 	return mockFactory
 }
