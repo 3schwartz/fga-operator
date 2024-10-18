@@ -211,7 +211,7 @@ func getAuthorizationModelId(ctx context.Context,
 	if modelRequestInstance.ExistingAuthorizationModelId != "" {
 		modelExists, err := openFgaService.CheckAuthorizationModelExists(ctx, modelRequestInstance.ExistingAuthorizationModelId)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to check if authorization model exists: %w", err)
 		}
 		if !modelExists {
 			return "", fmt.Errorf("authorization model with id %s does not exist", modelRequestInstance.ExistingAuthorizationModelId)
