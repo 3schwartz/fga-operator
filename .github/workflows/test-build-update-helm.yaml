@@ -52,6 +52,8 @@ jobs:
     runs-on: ubuntu-22.04
     # needs:
     #   - test
+    env:
+      BRANCH: ${{ github.head_ref || github.ref_name }}
 
     steps:
       - name: Checkout code
