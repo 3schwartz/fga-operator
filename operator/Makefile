@@ -78,7 +78,7 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 
 ##@ Build
 
-.PHONY pre-build
+.PHONY: pre-build
 pre-build: manifests generate fmt vet
 
 .PHONY: build
