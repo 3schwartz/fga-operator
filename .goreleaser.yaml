@@ -10,7 +10,7 @@ version: 2
 
 before:
   hooks:
-    - make pre-build
+    - make -C ./operator pre-build
 
 builds:
   - main: ./cmd/main.go
