@@ -377,7 +377,7 @@ spec:
 
 If you have existing stores and authorization models and wish to migrate to use the operator without deploying a new authorization model or store, you can retain the existing ones. Creating new models would require reconciling all existing relationship tuples, which might not be desirable.
 
-To address this, the `AuthorizationModelRequest` resource provides the properties existingStoreId and existingAuthorizationModelId, allowing you to reuse your current setup.
+To address this, the `AuthorizationModelRequest` resource provides the properties `existingStoreId` and `existingAuthorizationModelId`, allowing you to reuse your current setup.
 
 Example configuration:
 ```yaml
