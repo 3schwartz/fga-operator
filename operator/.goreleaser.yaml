@@ -1,0 +1,44 @@
+version: 2
+
+before:
+  hooks:
+    - make pre-build
+
+builds:
+  - main: ./cmd/main.go
+    binary: manager
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+release:
+  disable: true
+
+dockers:
+  - goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile.goreleaser
+    image_templates:
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}-amd64"
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+
+  - goos: linux
+    goarch: arm64
+    dockerfile: Dockerfile.goreleaser
+    image_templates:
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}-arm64"
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}"
+    image_templates:
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}-amd64"
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}-arm64"
