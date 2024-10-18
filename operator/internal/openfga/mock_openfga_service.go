@@ -73,6 +73,21 @@ func (m *MockPermissionService) EXPECT() *MockPermissionServiceMockRecorder {
 	return m.recorder
 }
 
+// CheckAuthorizationModelExists mocks base method.
+func (m *MockPermissionService) CheckAuthorizationModelExists(ctx context.Context, authorizationModelId string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckAuthorizationModelExists", ctx, authorizationModelId)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckAuthorizationModelExists indicates an expected call of CheckAuthorizationModelExists.
+func (mr *MockPermissionServiceMockRecorder) CheckAuthorizationModelExists(ctx, authorizationModelId interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckAuthorizationModelExists", reflect.TypeOf((*MockPermissionService)(nil).CheckAuthorizationModelExists), ctx, authorizationModelId)
+}
+
 // CheckExistingStoresById mocks base method.
 func (m *MockPermissionService) CheckExistingStoresById(ctx context.Context, storeId string) (*Store, error) {
 	m.ctrl.T.Helper()

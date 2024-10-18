@@ -127,6 +127,54 @@ func TestNegativeCheckExistingStoresByNameIntegration(t *testing.T) {
 	}
 }
 
+func TestPositiveCheckAuthorizationModelExistsIntegration(t *testing.T) {
+	// Arrange
+	setupIntegrationTest(t)
+	storeName := uuid.NewString()
+	store, err := service.CreateStore(ctx, storeName, &logger)
+	if err != nil {
+		t.Fatalf("failed to seed store: %v", err)
+	}
+	service.SetStoreId(store.Id)
+	modelId, err := service.CreateAuthorizationModel(ctx, model, &logger)
+	if err != nil {
+		t.Fatalf("failed to create authorization model: %v", err)
+	}
+
+	// Act
+	modelExists, err := service.CheckAuthorizationModelExists(ctx, modelId)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("failed to check existing models: %v", err)
+	}
+	if !modelExists {
+		t.Fatalf("expected model to exists")
+	}
+}
+
+func TestNegativeCheckAuthorizationModelExistsIntegration(t *testing.T) {
+	// Arrange
+	setupIntegrationTest(t)
+	storeName := uuid.NewString()
+	store, err := service.CreateStore(ctx, storeName, &logger)
+	if err != nil {
+		t.Fatalf("failed to seed store: %v", err)
+	}
+	service.SetStoreId(store.Id)
+
+	// Act
+	modelExists, err := service.CheckAuthorizationModelExists(ctx, uuid.NewString())
+
+	// Assert
+	if err != nil {
+		t.Fatalf("failed to check existing models: %v", err)
+	}
+	if modelExists {
+		t.Fatalf("didn't expect model to exists")
+	}
+}
+
 func TestCreateAuthorizationModelIntegration(t *testing.T) {
 	setupIntegrationTest(t)
 

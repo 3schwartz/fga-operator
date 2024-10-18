@@ -22,6 +22,7 @@ type PermissionService interface {
 	CheckExistingStoresByName(ctx context.Context, storeName string) (*Store, error)
 	CheckExistingStoresById(ctx context.Context, storeId string) (*Store, error)
 	CreateStore(ctx context.Context, storeName string, log *logr.Logger) (*Store, error)
+	CheckAuthorizationModelExists(ctx context.Context, authorizationModelId string) (bool, error)
 }
 
 type Store struct {
@@ -98,6 +99,32 @@ func (s *OpenFgaService) checkExistingStores(ctx context.Context, storeName, sto
 		}
 	}
 	return nil, nil
+}
+
+func (s *OpenFgaService) CheckAuthorizationModelExists(ctx context.Context, authorizationModelId string) (bool, error) {
+	pageSize := openfga.PtrInt32(10)
+	options := ofgaClient.ClientReadAuthorizationModelsOptions{
+		PageSize: pageSize,
+	}
+	for {
+		authModels, err := s.client.ReadAuthorizationModels(ctx).Options(options).Execute()
+		if err != nil {
+			return false, err
+		}
+		for _, authModel := range authModels.AuthorizationModels {
+			if authModel.Id == authorizationModelId {
+				return true, nil
+			}
+		}
+		if authModels.ContinuationToken == nil || *authModels.ContinuationToken == "" {
+			break
+		}
+		options = ofgaClient.ClientReadAuthorizationModelsOptions{
+			PageSize:          pageSize,
+			ContinuationToken: authModels.ContinuationToken,
+		}
+	}
+	return false, nil
 }
 
 func (s *OpenFgaService) CreateStore(ctx context.Context, storeName string, log *logr.Logger) (*Store, error) {

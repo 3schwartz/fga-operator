@@ -182,6 +182,7 @@ func updateAuthorizationModelWithMissingInstances(
 
 	modelInstances := authorizationModel.Spec.Instances
 	for _, modelRequestInstance := range missingInstances {
+		// TODO
 		authModelId, err := openFgaService.CreateAuthorizationModel(ctx, modelRequestInstance.AuthorizationModel, log)
 		if err != nil {
 			return false, err
@@ -295,6 +296,7 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 
 	definitions := make([]extensionsv1.AuthorizationModelDefinition, len(authorizationModelRequest.Spec.Instances))
 	for i, instance := range authorizationModelRequest.Spec.Instances {
+		// TODO
 		authModelId, err := openFgaService.CreateAuthorizationModel(ctx, instance.AuthorizationModel, log)
 		if err != nil {
 			return nil, err
