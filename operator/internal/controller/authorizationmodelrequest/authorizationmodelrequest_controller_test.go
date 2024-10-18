@@ -148,6 +148,151 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			deleteResource(&extensionsv1.Store{})
 		})
 
+		It("given existing store but missing in open fga, then do not create store resource", func() {
+			// Arrange
+			existingStoreId := uuid.NewString()
+			existingAuthorizationModelId := uuid.NewString()
+			resource := extensionsv1.AuthorizationModelRequest{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: namespaceName,
+					UID:       types.UID(uuid.NewString()),
+				},
+				Spec: extensionsv1.AuthorizationModelRequestSpec{
+					ExistingStoreId: existingStoreId,
+					Instances: []extensionsv1.AuthorizationModelRequestInstance{
+						{
+							ExistingAuthorizationModelId: existingAuthorizationModelId,
+							AuthorizationModel:           model,
+							Version:                      version,
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
+
+			mockFactory := fgainternal.NewMockPermissionServiceFactory(goMockController)
+			mockService := fgainternal.NewMockPermissionService(goMockController)
+			mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil).Times(1)
+
+			mockService.EXPECT().CheckExistingStoresByName(gomock.Any(), gomock.Any()).Times(0)
+			mockService.EXPECT().CheckExistingStoresById(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("store not found")).Times(1)
+			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			mockService.EXPECT().SetStoreId(gomock.Any()).Times(0)
+
+			mockService.EXPECT().CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			mockService.EXPECT().CheckAuthorizationModelExists(gomock.Any(), gomock.Any()).Times(0)
+
+			fakeRecorder := record.NewFakeRecorder(5)
+			reconciler := &AuthorizationModelRequestReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				Recorder:                 fakeRecorder,
+				Clock:                    clock.RealClock{},
+				PermissionServiceFactory: mockFactory,
+			}
+
+			// Act
+			_, err := reconciler.Reconcile(ctx, request)
+
+			// Assert
+			Expect(err).To(HaveOccurred())
+			Consistently(func() error {
+				store := &extensionsv1.Store{}
+				return k8sClient.Get(ctx, typeNamespacedName, store)
+			}, duration, interval).ShouldNot(Succeed())
+			Consistently(func() error {
+				authModel := &extensionsv1.AuthorizationModel{}
+				return k8sClient.Get(ctx, typeNamespacedName, authModel)
+			}, duration, interval).ShouldNot(Succeed())
+			Eventually(func() (extensionsv1.AuthorizationModelRequestStatusState, error) {
+				authModelRequest := &extensionsv1.AuthorizationModelRequest{}
+				if err := k8sClient.Get(ctx, typeNamespacedName, authModelRequest); err != nil {
+					return "", err
+				}
+				return authModelRequest.Status.State, nil
+			}, duration, interval).Should(Equal(extensionsv1.SynchronizationFailed))
+			validateEvent(fakeRecorder.Events, EventReasonStoreFailed)
+		})
+
+		It("given existing authorization model but missing in open fga, then do not create authorization model resource", func() {
+			// Arrange
+			existingStoreId := uuid.NewString()
+			existingAuthorizationModelId := uuid.NewString()
+			resource := extensionsv1.AuthorizationModelRequest{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: namespaceName,
+					UID:       types.UID(uuid.NewString()),
+				},
+				Spec: extensionsv1.AuthorizationModelRequestSpec{
+					ExistingStoreId: existingStoreId,
+					Instances: []extensionsv1.AuthorizationModelRequestInstance{
+						{
+							ExistingAuthorizationModelId: existingAuthorizationModelId,
+							AuthorizationModel:           model,
+							Version:                      version,
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, &resource)).To(Succeed())
+
+			mockFactory := fgainternal.NewMockPermissionServiceFactory(goMockController)
+			mockService := fgainternal.NewMockPermissionService(goMockController)
+			mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil).Times(1)
+
+			mockService.EXPECT().CheckExistingStoresByName(gomock.Any(), gomock.Any()).Times(0)
+			mockService.EXPECT().CheckExistingStoresById(gomock.Any(), gomock.Any()).Return(&fgainternal.Store{
+				Id:        existingStoreId,
+				Name:      resourceName,
+				CreatedAt: time.Now(),
+			}, nil).Times(1)
+			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			mockService.EXPECT().SetStoreId(gomock.Any()).Times(1)
+
+			mockService.EXPECT().CheckAuthorizationModelExists(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
+			mockService.EXPECT().CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+			fakeRecorder := record.NewFakeRecorder(5)
+			reconciler := &AuthorizationModelRequestReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				Recorder:                 fakeRecorder,
+				Clock:                    clock.RealClock{},
+				PermissionServiceFactory: mockFactory,
+			}
+
+			// Act
+			_, err := reconciler.Reconcile(ctx, request)
+
+			// Assert
+			Expect(err).To(HaveOccurred())
+			Eventually(func() error {
+				store := &extensionsv1.Store{}
+				err := k8sClient.Get(ctx, typeNamespacedName, store)
+				if err != nil {
+					return err
+				}
+				if store.Spec.Id != existingStoreId {
+					return fmt.Errorf("expected store id %s, got %s", existingStoreId, store.Spec.Id)
+				}
+				return nil
+			}, duration, interval).Should(Succeed())
+			Consistently(func() error {
+				authModel := &extensionsv1.AuthorizationModel{}
+				return k8sClient.Get(ctx, typeNamespacedName, authModel)
+			}, duration, interval).ShouldNot(Succeed())
+			Eventually(func() (extensionsv1.AuthorizationModelRequestStatusState, error) {
+				authModelRequest := &extensionsv1.AuthorizationModelRequest{}
+				if err := k8sClient.Get(ctx, typeNamespacedName, authModelRequest); err != nil {
+					return "", err
+				}
+				return authModelRequest.Status.State, nil
+			}, duration, interval).Should(Equal(extensionsv1.SynchronizationFailed))
+			validateEvent(fakeRecorder.Events, EventReasonAuthorizationModelCreationFailed)
+		})
+
 		It("given existing store and authorization model, then do not call open fga", func() {
 			// Arrange
 			existingStoreId := uuid.NewString()
@@ -174,11 +319,18 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			mockFactory := fgainternal.NewMockPermissionServiceFactory(goMockController)
 			mockService := fgainternal.NewMockPermissionService(goMockController)
 			mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil).Times(1)
+
 			mockService.EXPECT().CheckExistingStoresByName(gomock.Any(), gomock.Any()).Times(0)
-			mockService.EXPECT().CheckExistingStoresById(gomock.Any(), gomock.Any()).Times(1)
+			mockService.EXPECT().CheckExistingStoresById(gomock.Any(), gomock.Any()).Return(&fgainternal.Store{
+				Id:        existingStoreId,
+				Name:      resourceName,
+				CreatedAt: time.Now(),
+			}, nil).Times(1)
 			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			mockService.EXPECT().SetStoreId(gomock.Any()).Times(1)
+
 			mockService.EXPECT().CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			mockService.EXPECT().CheckAuthorizationModelExists(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 
 			reconciler := &AuthorizationModelRequestReconciler{
 				Client:                   k8sClient,
