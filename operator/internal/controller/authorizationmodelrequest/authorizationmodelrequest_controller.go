@@ -348,9 +348,18 @@ func (r *AuthorizationModelRequestReconciler) createStoreResource(
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	log *logr.Logger) (*extensionsv1.Store, error) {
 
-	store, err := openFgaService.CheckExistingStores(ctx, req.Name)
+	var store *openfga.Store
+	var err error
+	if authorizationModelRequest.Spec.ExistingStoreId != "" {
+		store, err = openFgaService.CheckExistingStoresById(ctx, authorizationModelRequest.Spec.ExistingStoreId)
+	} else {
+		store, err = openFgaService.CheckExistingStoresByName(ctx, req.Name)
+	}
 	if err != nil {
 		return nil, err
+	}
+	if store == nil && authorizationModelRequest.Spec.ExistingStoreId != "" {
+		return nil, fmt.Errorf("store with id %s does not exist", authorizationModelRequest.Spec.ExistingStoreId)
 	}
 	if store == nil {
 		store, err = openFgaService.CreateStore(ctx, req.Name, log)
@@ -359,6 +368,7 @@ func (r *AuthorizationModelRequestReconciler) createStoreResource(
 			return nil, err
 		}
 	}
+
 	storeResource := extensionsv1.NewStore(store.Name, req.Namespace, store.Id, store.CreatedAt)
 
 	if err := ctrl.SetControllerReference(authorizationModelRequest, storeResource, r.Scheme); err != nil {

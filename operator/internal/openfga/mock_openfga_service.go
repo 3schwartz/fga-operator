@@ -73,19 +73,34 @@ func (m *MockPermissionService) EXPECT() *MockPermissionServiceMockRecorder {
 	return m.recorder
 }
 
-// CheckExistingStores mocks base method.
-func (m *MockPermissionService) CheckExistingStores(ctx context.Context, storeName string) (*Store, error) {
+// CheckExistingStoresById mocks base method.
+func (m *MockPermissionService) CheckExistingStoresById(ctx context.Context, storeId string) (*Store, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CheckExistingStores", ctx, storeName)
+	ret := m.ctrl.Call(m, "CheckExistingStoresById", ctx, storeId)
 	ret0, _ := ret[0].(*Store)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// CheckExistingStores indicates an expected call of CheckExistingStores.
-func (mr *MockPermissionServiceMockRecorder) CheckExistingStores(ctx, storeName interface{}) *gomock.Call {
+// CheckExistingStoresById indicates an expected call of CheckExistingStoresById.
+func (mr *MockPermissionServiceMockRecorder) CheckExistingStoresById(ctx, storeId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckExistingStores", reflect.TypeOf((*MockPermissionService)(nil).CheckExistingStores), ctx, storeName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckExistingStoresById", reflect.TypeOf((*MockPermissionService)(nil).CheckExistingStoresById), ctx, storeId)
+}
+
+// CheckExistingStoresByName mocks base method.
+func (m *MockPermissionService) CheckExistingStoresByName(ctx context.Context, storeName string) (*Store, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckExistingStoresByName", ctx, storeName)
+	ret0, _ := ret[0].(*Store)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckExistingStoresByName indicates an expected call of CheckExistingStoresByName.
+func (mr *MockPermissionServiceMockRecorder) CheckExistingStoresByName(ctx, storeName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckExistingStoresByName", reflect.TypeOf((*MockPermissionService)(nil).CheckExistingStoresByName), ctx, storeName)
 }
 
 // CreateAuthorizationModel mocks base method.

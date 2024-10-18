@@ -174,7 +174,8 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			mockFactory := fgainternal.NewMockPermissionServiceFactory(goMockController)
 			mockService := fgainternal.NewMockPermissionService(goMockController)
 			mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil).Times(1)
-			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Times(0)
+			mockService.EXPECT().CheckExistingStoresByName(gomock.Any(), gomock.Any()).Times(0)
+			mockService.EXPECT().CheckExistingStoresById(gomock.Any(), gomock.Any()).Times(1)
 			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			mockService.EXPECT().SetStoreId(gomock.Any()).Times(1)
 			mockService.EXPECT().CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
@@ -312,7 +313,8 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			mockFactory := fgainternal.NewMockPermissionServiceFactory(goMockController)
 			mockService := fgainternal.NewMockPermissionService(goMockController)
 			mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil)
-			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
+			mockService.EXPECT().CheckExistingStoresByName(gomock.Any(), gomock.Any()).Return(nil, nil)
+			mockService.EXPECT().CheckExistingStoresById(gomock.Any(), gomock.Any()).Times(0)
 			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("error"))
 
 			fakeRecorder := record.NewFakeRecorder(5)
@@ -355,7 +357,8 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 			mockFactory := fgainternal.NewMockPermissionServiceFactory(goMockController)
 			mockService := fgainternal.NewMockPermissionService(goMockController)
 			mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil)
-			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
+			mockService.EXPECT().CheckExistingStoresByName(gomock.Any(), gomock.Any()).Return(nil, nil)
+			mockService.EXPECT().CheckExistingStoresById(gomock.Any(), gomock.Any()).Times(0)
 			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store, nil)
 			mockService.EXPECT().SetStoreId(gomock.Any())
 			mockService.EXPECT().
@@ -394,7 +397,8 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 
 		It("given existing store when create store resource then return existing", func() {
 			mockService := fgainternal.NewMockPermissionService(goMockController)
-			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(&fgainternal.Store{
+			mockService.EXPECT().CheckExistingStoresById(gomock.Any(), gomock.Any()).Times(0)
+			mockService.EXPECT().CheckExistingStoresByName(gomock.Any(), gomock.Any()).Return(&fgainternal.Store{
 				Id:        "foo",
 				Name:      resourceName,
 				CreatedAt: time.Now(),
@@ -414,7 +418,8 @@ var _ = Describe("AuthorizationModelRequest Controller", func() {
 		It("given no existing store when create store resource then create new store", func() {
 			storeId := uuid.NewString()
 			mockService := fgainternal.NewMockPermissionService(goMockController)
-			mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil)
+			mockService.EXPECT().CheckExistingStoresByName(gomock.Any(), gomock.Any()).Return(nil, nil)
+			mockService.EXPECT().CheckExistingStoresById(gomock.Any(), gomock.Any()).Times(0)
 			mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&fgainternal.Store{
 				Id:        storeId,
 				Name:      resourceName,
