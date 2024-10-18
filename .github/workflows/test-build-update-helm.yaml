@@ -84,11 +84,12 @@ jobs:
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
+        working-directory: ./operator
         with:
           distribution: goreleaser
           version: '~> v2'
           args: release --clean --config .goreleaser.yaml
-          workdir: operator
+          # workdir: operator
         env:
           GITHUB_REGISTRY: ${{ env.GITHUB_REGISTRY }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
