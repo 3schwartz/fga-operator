@@ -47,7 +47,7 @@ dockers:
     goarch: amd64
     dockerfile: Dockerfile.goreleaser
     image_templates:
-      - "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}-amd64"
     use: buildx
     build_flag_templates:
       - "--platform=linux/amd64"
@@ -56,16 +56,16 @@ dockers:
     goarch: arm64
     dockerfile: Dockerfile.goreleaser
     image_templates:
-      - "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm6"
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}-arm6"
     use: buildx
     build_flag_templates:
       - "--platform=linux/arm64"
 
 docker_manifests:
-  - name_template: "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}"
+  - name_template: "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}"
     image_templates:
-      - "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
-      - "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm64"
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}-amd64"
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}-arm64"
 
 changelog:
   sort: asc

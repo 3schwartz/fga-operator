@@ -91,6 +91,7 @@ jobs:
           workdir: operator
         env:
           GITHUB_REGISTRY: ${{ env.GITHUB_REGISTRY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
