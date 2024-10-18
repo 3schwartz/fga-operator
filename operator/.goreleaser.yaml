@@ -56,7 +56,7 @@ dockers:
     goarch: arm64
     dockerfile: Dockerfile.goreleaser
     image_templates:
-      - "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}-arm6"
+      - "{{ .Env.GITHUB_REGISTRY }}/{{ .Env.GITHUB_REPOSITORY }}:{{ .Env.IMAGE_TAG }}-arm64"
     use: buildx
     build_flag_templates:
       - "--platform=linux/arm64"
