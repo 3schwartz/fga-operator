@@ -81,6 +81,7 @@ jobs:
       contents: read
       packages: write
     runs-on: ubuntu-22.04
+    if: github.ref == 'refs/heads/main'
     needs:
       - test
       - validate-build
