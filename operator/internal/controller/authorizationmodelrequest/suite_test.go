@@ -126,13 +126,12 @@ func setupMockFactory() fgainternal.PermissionServiceFactory {
 	authModelId := "123"
 
 	mockFactory.EXPECT().GetService(gomock.Any()).Return(mockService, nil).AnyTimes()
-	mockService.EXPECT().CheckExistingStores(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	mockService.EXPECT().CheckExistingStoresByName(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	mockService.EXPECT().CreateStore(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store, nil).AnyTimes()
 	mockService.EXPECT().SetStoreId(gomock.Any()).AnyTimes()
 	mockService.EXPECT().
 		CreateAuthorizationModel(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(authModelId, nil).
 		AnyTimes()
-	mockService.EXPECT().SetAuthorizationModelId(gomock.Any()).Return(nil).AnyTimes()
 	return mockFactory
 }

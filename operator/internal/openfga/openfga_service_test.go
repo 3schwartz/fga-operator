@@ -47,7 +47,7 @@ func setupIntegrationTest(t *testing.T) {
 	logger = log.FromContext(context.Background())
 }
 
-func TestPositiveStoreIntegration(t *testing.T) {
+func TestPositiveCheckExistingStoresByIdIntegration(t *testing.T) {
 	// Arrange
 	setupIntegrationTest(t)
 	testStoreName := uuid.NewString()
@@ -59,7 +59,7 @@ func TestPositiveStoreIntegration(t *testing.T) {
 	}
 
 	// Assert
-	existingStore, err := service.CheckExistingStores(ctx, testStoreName)
+	existingStore, err := service.CheckExistingStoresById(ctx, createdStore.Id)
 	if err != nil {
 		t.Fatalf("failed to check existing stores: %v", err)
 	}
@@ -72,18 +72,106 @@ func TestPositiveStoreIntegration(t *testing.T) {
 	}
 }
 
-func TestNegativeStoreIntegration(t *testing.T) {
+func TestNegativeCheckExistingStoresByIdIntegration(t *testing.T) {
+	// Arrange
+	setupIntegrationTest(t)
+	nonExistingStoreId := "non-existing-store"
+
+	// Assert
+	nonExistingStore, err := service.CheckExistingStoresById(ctx, nonExistingStoreId)
+	if err != nil {
+		t.Fatalf("failed to check existing stores: %v", err)
+	}
+	if nonExistingStore != nil {
+		t.Fatalf("expected store %q to be non-existent, but it exists", nonExistingStoreId)
+	}
+}
+
+func TestPositiveCheckExistingStoresByNameIntegration(t *testing.T) {
+	// Arrange
+	setupIntegrationTest(t)
+	testStoreName := uuid.NewString()
+
+	// Act
+	createdStore, err := service.CreateStore(ctx, testStoreName, &logger)
+	if err != nil {
+		t.Fatalf("failed to create test store: %v", err)
+	}
+
+	// Assert
+	existingStore, err := service.CheckExistingStoresByName(ctx, testStoreName)
+	if err != nil {
+		t.Fatalf("failed to check existing stores: %v", err)
+	}
+
+	if existingStore == nil {
+		t.Fatalf("expected test store %q to exist, but it doesn't", testStoreName)
+	}
+	if existingStore.Name != createdStore.Name || existingStore.Id != createdStore.Id {
+		t.Fatalf("created store %q does not match the store returned by CheckExistingStores", testStoreName)
+	}
+}
+
+func TestNegativeCheckExistingStoresByNameIntegration(t *testing.T) {
 	// Arrange
 	setupIntegrationTest(t)
 	nonExistingStoreName := "non-existing-store"
 
 	// Assert
-	nonExistingStore, err := service.CheckExistingStores(ctx, nonExistingStoreName)
+	nonExistingStore, err := service.CheckExistingStoresByName(ctx, nonExistingStoreName)
 	if err != nil {
 		t.Fatalf("failed to check existing stores: %v", err)
 	}
 	if nonExistingStore != nil {
 		t.Fatalf("expected store %q to be non-existent, but it exists", nonExistingStoreName)
+	}
+}
+
+func TestPositiveCheckAuthorizationModelExistsIntegration(t *testing.T) {
+	// Arrange
+	setupIntegrationTest(t)
+	storeName := uuid.NewString()
+	store, err := service.CreateStore(ctx, storeName, &logger)
+	if err != nil {
+		t.Fatalf("failed to seed store: %v", err)
+	}
+	service.SetStoreId(store.Id)
+	modelId, err := service.CreateAuthorizationModel(ctx, model, &logger)
+	if err != nil {
+		t.Fatalf("failed to create authorization model: %v", err)
+	}
+
+	// Act
+	modelExists, err := service.CheckAuthorizationModelExists(ctx, modelId)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("failed to check existing models: %v", err)
+	}
+	if !modelExists {
+		t.Fatalf("expected model to exists")
+	}
+}
+
+func TestNegativeCheckAuthorizationModelExistsIntegration(t *testing.T) {
+	// Arrange
+	setupIntegrationTest(t)
+	storeName := uuid.NewString()
+	store, err := service.CreateStore(ctx, storeName, &logger)
+	if err != nil {
+		t.Fatalf("failed to seed store: %v", err)
+	}
+	service.SetStoreId(store.Id)
+
+	// Act
+	modelExists, err := service.CheckAuthorizationModelExists(ctx, uuid.NewString())
+
+	// Assert
+	if err != nil {
+		t.Fatalf("failed to check existing models: %v", err)
+	}
+	if modelExists {
+		t.Fatalf("didn't expect model to exists")
 	}
 }
 
@@ -107,11 +195,6 @@ func TestCreateAuthorizationModelIntegration(t *testing.T) {
 	// Assert
 	if modelID == "" {
 		t.Fatal("authorization model ID is empty")
-	}
-
-	// Act & Assert
-	if err := service.SetAuthorizationModelId(modelID); err != nil {
-		t.Fatalf("failed to set authorization model id: %v", err)
 	}
 }
 

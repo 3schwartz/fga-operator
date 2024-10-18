@@ -1,12 +1,12 @@
 networks:
-  openfga:
+  openfga-fga-operator:
 
 services:
-  postgres:
+  postgres-fga-operator:
     image: postgres:14
-    container_name: postgres
+    container_name: postgres-fga-operator
     networks:
-      - openfga
+      - openfga-fga-operator
     ports:
       - "5432:5432"
     environment:
@@ -18,38 +18,34 @@ services:
       timeout: 5s
       retries: 5
 
-  migrate:
+  migrate-fga-operator:
     depends_on:
-      postgres:
+      postgres-fga-operator:
         condition: service_healthy
     image: openfga/openfga:v1.5
-    container_name: migrate
+    container_name: migrate-fga-operator
     command: migrate
     environment:
       - OPENFGA_DATASTORE_ENGINE=postgres
-      - OPENFGA_DATASTORE_URI=postgres://postgres:password@postgres:5432/postgres
+      - OPENFGA_DATASTORE_URI=postgres://postgres:password@postgres-fga-operator:5432/postgres
     networks:
-      - openfga
+      - openfga-fga-operator
 
-  openfga:
+  openfga-fga-operator:
     depends_on:
-      migrate:
+      migrate-fga-operator:
         condition: service_completed_successfully
     image: openfga/openfga:v1.5
-    container_name: openfga
+    container_name: openfga-fga-operator
     environment:
       - OPENFGA_DATASTORE_ENGINE=postgres
-      - OPENFGA_DATASTORE_URI=postgres://postgres:password@postgres:5432/postgres
+      - OPENFGA_DATASTORE_URI=postgres://postgres:password@postgres-fga-operator:5432/postgres
       - OPENFGA_LOG_FORMAT=json
       - OPENFGA_AUTHN_METHOD=preshared
       - OPENFGA_AUTHN_PRESHARED_KEYS=foobar
     command: run
     networks:
-      - openfga
+      - openfga-fga-operator
     ports:
       # Needed for the http server
       - "8089:8080"
-      # Needed for the grpc server (if used)
-      - "8081:8081"
-      # Needed for the playground (Do not enable in prod!)
-      - "3000:3000"

@@ -17,10 +17,11 @@ type PermissionServiceFactory interface {
 
 type PermissionService interface {
 	SetStoreId(storeId string)
-	SetAuthorizationModelId(authorizationModelId string) error
 	CreateAuthorizationModel(ctx context.Context, authorizationModel string, log *logr.Logger) (string, error)
-	CheckExistingStores(ctx context.Context, storeName string) (*Store, error)
+	CheckExistingStoresByName(ctx context.Context, storeName string) (*Store, error)
+	CheckExistingStoresById(ctx context.Context, storeId string) (*Store, error)
 	CreateStore(ctx context.Context, storeName string, log *logr.Logger) (*Store, error)
+	CheckAuthorizationModelExists(ctx context.Context, authorizationModelId string) (bool, error)
 }
 
 type Store struct {
@@ -61,7 +62,15 @@ func (s *OpenFgaService) SetStoreId(storeId string) {
 	s.client.SetStoreId(storeId)
 }
 
-func (s *OpenFgaService) CheckExistingStores(ctx context.Context, storeName string) (*Store, error) {
+func (s *OpenFgaService) CheckExistingStoresByName(ctx context.Context, storeName string) (*Store, error) {
+	return s.checkExistingStores(ctx, storeName, "")
+}
+
+func (s *OpenFgaService) CheckExistingStoresById(ctx context.Context, storeId string) (*Store, error) {
+	return s.checkExistingStores(ctx, "", storeId)
+}
+
+func (s *OpenFgaService) checkExistingStores(ctx context.Context, storeName, storeId string) (*Store, error) {
 	pageSize := openfga.PtrInt32(10)
 	options := ofgaClient.ClientListStoresOptions{
 		PageSize: pageSize,
@@ -72,7 +81,7 @@ func (s *OpenFgaService) CheckExistingStores(ctx context.Context, storeName stri
 			return nil, err
 		}
 		for _, oldStore := range stores.Stores {
-			if oldStore.Name == storeName {
+			if storeName != "" && oldStore.Name == storeName || storeId != "" && oldStore.Id == storeId {
 				return &Store{
 					Id:        oldStore.Id,
 					Name:      oldStore.Name,
@@ -91,6 +100,32 @@ func (s *OpenFgaService) CheckExistingStores(ctx context.Context, storeName stri
 	return nil, nil
 }
 
+func (s *OpenFgaService) CheckAuthorizationModelExists(ctx context.Context, authorizationModelId string) (bool, error) {
+	pageSize := openfga.PtrInt32(10)
+	options := ofgaClient.ClientReadAuthorizationModelsOptions{
+		PageSize: pageSize,
+	}
+	for {
+		authModels, err := s.client.ReadAuthorizationModels(ctx).Options(options).Execute()
+		if err != nil {
+			return false, err
+		}
+		for _, authModel := range authModels.AuthorizationModels {
+			if authModel.Id == authorizationModelId {
+				return true, nil
+			}
+		}
+		if authModels.ContinuationToken == nil || *authModels.ContinuationToken == "" {
+			break
+		}
+		options = ofgaClient.ClientReadAuthorizationModelsOptions{
+			PageSize:          pageSize,
+			ContinuationToken: authModels.ContinuationToken,
+		}
+	}
+	return false, nil
+}
+
 func (s *OpenFgaService) CreateStore(ctx context.Context, storeName string, log *logr.Logger) (*Store, error) {
 	body := ofgaClient.ClientCreateStoreRequest{Name: storeName}
 	store, err := s.client.CreateStore(ctx).Body(body).Execute()
@@ -103,10 +138,6 @@ func (s *OpenFgaService) CreateStore(ctx context.Context, storeName string, log 
 		Name:      store.Name,
 		CreatedAt: store.CreatedAt,
 	}, nil
-}
-
-func (s *OpenFgaService) SetAuthorizationModelId(authorizationModelId string) error {
-	return s.client.SetAuthorizationModelId(authorizationModelId)
 }
 
 func (s *OpenFgaService) CreateAuthorizationModel(
