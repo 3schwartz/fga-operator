@@ -17,7 +17,6 @@ type PermissionServiceFactory interface {
 
 type PermissionService interface {
 	SetStoreId(storeId string)
-	SetAuthorizationModelId(authorizationModelId string) error
 	CreateAuthorizationModel(ctx context.Context, authorizationModel string, log *logr.Logger) (string, error)
 	CheckExistingStoresByName(ctx context.Context, storeName string) (*Store, error)
 	CheckExistingStoresById(ctx context.Context, storeId string) (*Store, error)
@@ -139,10 +138,6 @@ func (s *OpenFgaService) CreateStore(ctx context.Context, storeName string, log 
 		Name:      store.Name,
 		CreatedAt: store.CreatedAt,
 	}, nil
-}
-
-func (s *OpenFgaService) SetAuthorizationModelId(authorizationModelId string) error {
-	return s.client.SetAuthorizationModelId(authorizationModelId)
 }
 
 func (s *OpenFgaService) CreateAuthorizationModel(

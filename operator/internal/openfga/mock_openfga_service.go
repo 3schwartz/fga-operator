@@ -148,20 +148,6 @@ func (mr *MockPermissionServiceMockRecorder) CreateStore(ctx, storeName, log int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateStore", reflect.TypeOf((*MockPermissionService)(nil).CreateStore), ctx, storeName, log)
 }
 
-// SetAuthorizationModelId mocks base method.
-func (m *MockPermissionService) SetAuthorizationModelId(authorizationModelId string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetAuthorizationModelId", authorizationModelId)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SetAuthorizationModelId indicates an expected call of SetAuthorizationModelId.
-func (mr *MockPermissionServiceMockRecorder) SetAuthorizationModelId(authorizationModelId interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAuthorizationModelId", reflect.TypeOf((*MockPermissionService)(nil).SetAuthorizationModelId), authorizationModelId)
-}
-
 // SetStoreId mocks base method.
 func (m *MockPermissionService) SetStoreId(storeId string) {
 	m.ctrl.T.Helper()
