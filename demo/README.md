@@ -28,11 +28,11 @@ helm repo update
 # Done at demo
 
 ```sh
-helm search repo fga --devel
+helm search repo fga
 ```
 
 ```sh
-helm install fga-operator fga-operator/fga-operator --version 0.1.0-<TAG> -f values.yaml
+helm install fga-operator fga-operator/fga-operator --version <VERSION> -f values.yaml
 ```
 
 ```sh
