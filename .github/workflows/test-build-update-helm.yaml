@@ -53,13 +53,13 @@ jobs:
     # needs:
     #   - test
     env:
-      BRANCH: ${{ github.ref_name }}
+      BRANCH: ${{ github.head_ref || github.ref_name }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # ref: ${{ env.BRANCH }}
+          ref: ${{ env.BRANCH }}
           token: ${{ secrets.GIT_PUSH }}
 
       - name: Configure Git
