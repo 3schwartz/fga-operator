@@ -13,7 +13,7 @@ before:
     - make pre-build
 
 builds:
-  - main: main: ./cmd/main.go
+  - main: ./cmd/main.go
     flags:
       - -o=bin/manager
     env:
