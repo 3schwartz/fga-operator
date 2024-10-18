@@ -1,0 +1,7 @@
+controllerManager:
+  openFgaUrlEnvVar: 'http://openfga.demo.svc.cluster.local:8080'
+  openFgaApiTokenEnvVar: foobar
+
+  manager:
+    args:
+    - --metrics-bind-address=:8080
