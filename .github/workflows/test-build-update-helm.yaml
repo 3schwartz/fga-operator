@@ -21,150 +21,150 @@ env:
   GITHUB_REGISTRY: ghcr.io
 
 jobs:
-  test:
-    runs-on: ubuntu-24.04
+  # test:
+  #   runs-on: ubuntu-24.04
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: './operator/go.mod'
-          cache-dependency-path: './operator/go.sum'
-          check-latest: true
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version-file: './operator/go.mod'
+  #         cache-dependency-path: './operator/go.sum'
+  #         check-latest: true
 
-      - name: Updating docker compose
-        run: |
-          sudo curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
+  #     - name: Updating docker compose
+  #       run: |
+  #         sudo curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+  #         sudo chmod +x /usr/local/bin/docker-compose
 
-      - name: Start OpenFGA
-        run: docker-compose -f development/docker-compose/docker-compose.yaml up --wait
+  #     - name: Start OpenFGA
+  #       run: docker-compose -f development/docker-compose/docker-compose.yaml up --wait
 
-      - name: Run tests
-        working-directory: ./operator
-        run: make test
+  #     - name: Run tests
+  #       working-directory: ./operator
+  #       run: make test
 
-  validate-build:
-    runs-on: ubuntu-24.04
+  # validate-build:
+  #   runs-on: ubuntu-24.04
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: './operator/go.mod'
-          cache-dependency-path: './operator/go.sum'
-          check-latest: true        
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version-file: './operator/go.mod'
+  #         cache-dependency-path: './operator/go.sum'
+  #         check-latest: true        
 
-      - name: Build
-        working-directory: ./operator
-        run: make build
+  #     - name: Build
+  #       working-directory: ./operator
+  #       run: make build
 
-  validate-image-build:
-    runs-on: ubuntu-24.04
+  # validate-image-build:
+  #   runs-on: ubuntu-24.04
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4        
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4        
 
-      - name: Build Docker image
-        working-directory: ./operator
-        run: make docker-build
+  #     - name: Build Docker image
+  #       working-directory: ./operator
+  #       run: make docker-build
 
-  build-push-image:
-    permissions:
-      contents: read
-      packages: write
-    runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main'
-    needs:
-      - test
-      - validate-build
-      - validate-image-build
-    env:
-      BRANCH: ${{ github.head_ref || github.ref_name }}
+  # build-push-image:
+  #   permissions:
+  #     contents: read
+  #     packages: write
+  #   runs-on: ubuntu-24.04
+  #   if: github.ref == 'refs/heads/main'
+  #   needs:
+  #     - test
+  #     - validate-build
+  #     - validate-image-build
+  #   env:
+  #     BRANCH: ${{ github.head_ref || github.ref_name }}
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.BRANCH }}
-          token: ${{ secrets.GIT_PUSH }}
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ env.BRANCH }}
+  #         token: ${{ secrets.GIT_PUSH }}
 
-      - name: Configure Git
-        run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
+  #     - name: Configure Git
+  #       run: |
+  #         git config --global user.email "action@github.com"
+  #         git config --global user.name "GitHub Action"
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.GITHUB_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Log in to GitHub Container Registry
+  #       uses: docker/login-action@v3
+  #       with:
+  #         registry: ${{ env.GITHUB_REGISTRY }}
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create new tag
-        run: |
-          git tag ${{ env.IMAGE_TAG }}
+  #     - name: Create new tag
+  #       run: |
+  #         git tag ${{ env.IMAGE_TAG }}
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean --config .goreleaser.yaml
-          workdir: operator
-        env:
-          GITHUB_REGISTRY: ${{ env.GITHUB_REGISTRY }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Run GoReleaser
+  #       uses: goreleaser/goreleaser-action@v6
+  #       with:
+  #         distribution: goreleaser
+  #         version: '~> v2'
+  #         args: release --clean --config .goreleaser.yaml
+  #         workdir: operator
+  #       env:
+  #         GITHUB_REGISTRY: ${{ env.GITHUB_REGISTRY }}
+  #         GITHUB_REPOSITORY: ${{ github.repository }}
+  #         IMAGE_TAG: ${{ env.IMAGE_TAG }}
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pust new tag
-        run: |
-          git push --tags          
+  #     - name: Pust new tag
+  #       run: |
+  #         git push --tags          
 
-  helm-update:
-    runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main'
-    needs:
-      - build-push-image
-    env:
-      BRANCH: ${{ github.head_ref || github.ref_name }}
+  # helm-update:
+  #   runs-on: ubuntu-24.04
+  #   if: github.ref == 'refs/heads/main'
+  #   needs:
+  #     - build-push-image
+  #   env:
+  #     BRANCH: ${{ github.head_ref || github.ref_name }}
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.BRANCH }}
-          token: ${{ secrets.GIT_PUSH }}
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ env.BRANCH }}
+  #         token: ${{ secrets.GIT_PUSH }}
 
-      - name: Configure Git
-        run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
+  #     - name: Configure Git
+  #       run: |
+  #         git config --global user.email "action@github.com"
+  #         git config --global user.name "GitHub Action"
 
-      - name: Update values.yaml
-        run: |
-          sed -i 's/tag: .*/tag: \"${{ github.run_id }}\"/' charts/fga-operator/values.yaml
+  #     - name: Update values.yaml
+  #       run: |
+  #         sed -i 's/tag: .*/tag: \"${{ github.run_id }}\"/' charts/fga-operator/values.yaml
 
-      - name: Commit updated files
-        run: |
-          git add charts/fga-operator/values.yaml charts/fga-operator/Chart.yaml
-          git commit -m "Update controllerManager.image.tag and chart version to ${{ github.run_id }}"
+  #     - name: Commit updated files
+  #       run: |
+  #         git add charts/fga-operator/values.yaml charts/fga-operator/Chart.yaml
+  #         git commit -m "Update controllerManager.image.tag and chart version to ${{ github.run_id }}"
 
-      - name: Push changes
-        run: |
-          git push origin HEAD:${{ env.BRANCH }}
+  #     - name: Push changes
+  #       run: |
+  #         git push origin HEAD:${{ env.BRANCH }}
 
   helm-release:
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
     needs:
@@ -185,92 +185,94 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Merge main into gh-pages
-        run: |
-          git checkout main
-          git pull origin main
+      # - name: Merge main into gh-pages
+      #   run: |
+      #     git checkout main
+      #     git pull origin main
 
-          git checkout gh-pages
-          git pull origin gh-pages
+      #     git checkout gh-pages
+      #     git pull origin gh-pages
 
-          git merge origin/main
-          git push origin gh-pages
+      #     git merge origin/main
+      #     git push origin gh-pages
           
-          git checkout main
+      #     git checkout main
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
+        with:
+          skip_existing: true
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
-  scan-image:
-    permissions:
-      actions: read
-      contents: read
-      packages: read
-      security-events: write
-    runs-on: ubuntu-24.04
-    needs:
-      - build-push-image
+  # scan-image:
+  #   permissions:
+  #     actions: read
+  #     contents: read
+  #     packages: read
+  #     security-events: write
+  #   runs-on: ubuntu-24.04
+  #   needs:
+  #     - build-push-image
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.GITHUB_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Log in to GitHub Container Registry
+  #       uses: docker/login-action@v3
+  #       with:
+  #         registry: ${{ env.GITHUB_REGISTRY }}
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker pull
-        run: |
-          docker pull ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
+  #     - name: Docker pull
+  #       run: |
+  #         docker pull ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
 
-      - name: Run Snyk to check Docker images for vulnerabilities
-        id: snyk_scan_docker_image
-        uses: snyk/actions/docker@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          image: ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
-          args: --file=./operator/Dockerfile --severity-threshold=high --sarif-file-output=snyk.sarif
+  #     - name: Run Snyk to check Docker images for vulnerabilities
+  #       id: snyk_scan_docker_image
+  #       uses: snyk/actions/docker@master
+  #       continue-on-error: true
+  #       env:
+  #         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  #       with:
+  #         image: ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
+  #         args: --file=./operator/Dockerfile --severity-threshold=high --sarif-file-output=snyk.sarif
 
-      - name: Run Snyk to check Docker.goreleaser images for vulnerabilities
-        id: snyk_scan_docker_goreleaser_image
-        uses: snyk/actions/docker@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          image: ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
-          args: --file=./operator/Dockerfile.goreleaser --severity-threshold=high --sarif-file-output=snyk.sarif
+  #     - name: Run Snyk to check Docker.goreleaser images for vulnerabilities
+  #       id: snyk_scan_docker_goreleaser_image
+  #       uses: snyk/actions/docker@master
+  #       continue-on-error: true
+  #       env:
+  #         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  #       with:
+  #         image: ${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
+  #         args: --file=./operator/Dockerfile.goreleaser --severity-threshold=high --sarif-file-output=snyk.sarif
     
-      - name: Upload Snyk report as sarif
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: snyk.sarif
+  #     - name: Upload Snyk report as sarif
+  #       uses: github/codeql-action/upload-sarif@v3
+  #       with:
+  #         sarif_file: snyk.sarif
 
-  scan-repo:
-    permissions:
-      security-events: write
-    runs-on: ubuntu-24.04
+  # scan-repo:
+  #   permissions:
+  #     security-events: write
+  #   runs-on: ubuntu-24.04
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
 
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/golang@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: ./operator --severity-threshold=high --sarif-file-output=snyk.sarif
+  #     - name: Run Snyk to check for vulnerabilities
+  #       uses: snyk/actions/golang@master
+  #       continue-on-error: true
+  #       env:
+  #         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  #       with:
+  #         args: ./operator --severity-threshold=high --sarif-file-output=snyk.sarif
 
-      - name: Upload result to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: snyk.sarif
+  #     - name: Upload result to GitHub Code Scanning
+  #       uses: github/codeql-action/upload-sarif@v3
+  #       with:
+  #         sarif_file: snyk.sarif
