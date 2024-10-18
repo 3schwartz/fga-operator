@@ -68,6 +68,11 @@ jobs:
       #   working-directory: ./operator
       #   run: make docker-build docker-push IMG=${{ env.GITHUB_REGISTRY }}/${{ github.repository }}:${{ env.IMAGE_TAG }}
 
+      - name: Create new tag
+        run: |
+          git tag ${{ env.IMAGE_TAG }}
+          git push origin ${{ env.IMAGE_TAG }}
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
