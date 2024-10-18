@@ -81,7 +81,7 @@ jobs:
       - name: Create new tag
         run: |
           git tag ${{ env.IMAGE_TAG }}
-          git push --tags
+          git push tag ${{ env.IMAGE_TAG }}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
