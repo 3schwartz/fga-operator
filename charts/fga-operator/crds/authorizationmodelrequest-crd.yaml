@@ -47,10 +47,20 @@ spec:
             description: AuthorizationModelRequestSpec defines the desired state of
               AuthorizationModelRequest
             properties:
+              existingStoreId:
+                description: |-
+                  ExistingStoreId specifies the ID of an existing store in the system.
+                  Only applicable when migrating from existing infrastructure where the operator was not previously used.
+                type: string
               instances:
                 items:
                   properties:
                     authorizationModel:
+                      type: string
+                    existingAuthorizationModelId:
+                      description: |-
+                        ExistingAuthorizationModelId specifies the ID of an existing authorization model in the system.
+                        Only applicable when migrating from existing infrastructure where the operator was not previously used.
                       type: string
                     version:
                       properties:

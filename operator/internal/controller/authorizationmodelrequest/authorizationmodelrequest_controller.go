@@ -182,14 +182,11 @@ func updateAuthorizationModelWithMissingInstances(
 
 	modelInstances := authorizationModel.Spec.Instances
 	for _, modelRequestInstance := range missingInstances {
-		authModelId, err := openFgaService.CreateAuthorizationModel(ctx, modelRequestInstance.AuthorizationModel, log)
+		authModelId, err := getAuthorizationModelId(ctx, openFgaService, modelRequestInstance, authorizationModel.Name, log)
 		if err != nil {
 			return false, err
 		}
-		log.V(0).Info("Created new authorization model in OpenFGA",
-			"authModel", authorizationModel.Name,
-			"version", modelRequestInstance.Version.String(),
-			"authModelId", authModelId)
+
 		log.V(0).Info(fmt.Sprintf("Authorization model resource will updates it's instances with id: %s", authModelId),
 			"authModel", authorizationModel.Name,
 			"version", modelRequestInstance.Version.String(),
@@ -204,6 +201,38 @@ func updateAuthorizationModelWithMissingInstances(
 
 	authorizationModel.Spec.Instances = modelInstances
 	return true, nil
+}
+
+func getAuthorizationModelId(ctx context.Context,
+	openFgaService openfga.PermissionService,
+	modelRequestInstance extensionsv1.AuthorizationModelRequestInstance,
+	authorizationModelName string,
+	log *logr.Logger) (string, error) {
+	if modelRequestInstance.ExistingAuthorizationModelId != "" {
+		modelExists, err := openFgaService.CheckAuthorizationModelExists(ctx, modelRequestInstance.ExistingAuthorizationModelId)
+		if err != nil {
+			return "", fmt.Errorf("failed to check if authorization model exists: %w", err)
+		}
+		if !modelExists {
+			return "", fmt.Errorf("authorization model with id %s does not exist", modelRequestInstance.ExistingAuthorizationModelId)
+		}
+		log.V(0).Info(fmt.Sprintf("Authorization model resource will use existing id: %s", modelRequestInstance.ExistingAuthorizationModelId),
+			"authModel", authorizationModelName,
+			"version", modelRequestInstance.Version.String(),
+		)
+		return modelRequestInstance.ExistingAuthorizationModelId, nil
+
+	} else {
+		authModelId, err := openFgaService.CreateAuthorizationModel(ctx, modelRequestInstance.AuthorizationModel, log)
+		if err != nil {
+			return "", err
+		}
+		log.V(0).Info("Created new authorization model in OpenFGA",
+			"authModel", authorizationModelName,
+			"version", modelRequestInstance.Version.String(),
+			"authModelId", authModelId)
+		return authModelId, nil
+	}
 }
 
 func removeObsoleteInstances(
@@ -295,7 +324,7 @@ func (r *AuthorizationModelRequestReconciler) createAuthorizationModel(
 
 	definitions := make([]extensionsv1.AuthorizationModelDefinition, len(authorizationModelRequest.Spec.Instances))
 	for i, instance := range authorizationModelRequest.Spec.Instances {
-		authModelId, err := openFgaService.CreateAuthorizationModel(ctx, instance.AuthorizationModel, log)
+		authModelId, err := getAuthorizationModelId(ctx, openFgaService, instance, authorizationModelRequest.Name, log)
 		if err != nil {
 			return nil, err
 		}
@@ -348,9 +377,18 @@ func (r *AuthorizationModelRequestReconciler) createStoreResource(
 	authorizationModelRequest *extensionsv1.AuthorizationModelRequest,
 	log *logr.Logger) (*extensionsv1.Store, error) {
 
-	store, err := openFgaService.CheckExistingStores(ctx, req.Name)
+	var store *openfga.Store
+	var err error
+	if authorizationModelRequest.Spec.ExistingStoreId != "" {
+		store, err = openFgaService.CheckExistingStoresById(ctx, authorizationModelRequest.Spec.ExistingStoreId)
+	} else {
+		store, err = openFgaService.CheckExistingStoresByName(ctx, req.Name)
+	}
 	if err != nil {
 		return nil, err
+	}
+	if store == nil && authorizationModelRequest.Spec.ExistingStoreId != "" {
+		return nil, fmt.Errorf("store with id %s does not exist", authorizationModelRequest.Spec.ExistingStoreId)
 	}
 	if store == nil {
 		store, err = openFgaService.CreateStore(ctx, req.Name, log)
@@ -359,6 +397,7 @@ func (r *AuthorizationModelRequestReconciler) createStoreResource(
 			return nil, err
 		}
 	}
+
 	storeResource := extensionsv1.NewStore(store.Name, req.Namespace, store.Id, store.CreatedAt)
 
 	if err := ctrl.SetControllerReference(authorizationModelRequest, storeResource, r.Scheme); err != nil {

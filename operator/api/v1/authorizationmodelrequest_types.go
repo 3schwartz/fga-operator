@@ -51,7 +51,10 @@ const (
 type AuthorizationModelRequestSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Instances []AuthorizationModelRequestInstance `json:"instances,omitempty"`
+	// ExistingStoreId specifies the ID of an existing store in the system.
+	// Only applicable when migrating from existing infrastructure where the operator was not previously used.
+	ExistingStoreId string                              `json:"existingStoreId,omitempty"`
+	Instances       []AuthorizationModelRequestInstance `json:"instances,omitempty"`
 }
 
 // AuthorizationModelRequestStatus defines the observed state of AuthorizationModelRequest.
@@ -138,6 +141,9 @@ func (v ModelVersion) String() string {
 }
 
 type AuthorizationModelRequestInstance struct {
-	AuthorizationModel string       `json:"authorizationModel,omitempty"`
-	Version            ModelVersion `json:"version,omitempty"`
+	// ExistingAuthorizationModelId specifies the ID of an existing authorization model in the system.
+	// Only applicable when migrating from existing infrastructure where the operator was not previously used.
+	ExistingAuthorizationModelId string       `json:"existingAuthorizationModelId,omitempty"`
+	AuthorizationModel           string       `json:"authorizationModel,omitempty"`
+	Version                      ModelVersion `json:"version,omitempty"`
 }

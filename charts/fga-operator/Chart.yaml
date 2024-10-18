@@ -5,5 +5,5 @@ description: |
   The operator manages and automates the deployment and reference of OpenFGA
   resources like stores and authroization models.
 type: application
-version: 0.1.0-11408733139
+version: 0.1.0-11408839528
 appVersion: "0.1.0"

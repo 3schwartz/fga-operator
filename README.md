@@ -373,6 +373,41 @@ spec:
         name: main
 ```
 
+## Migration Guide for Using Operator with Existing Models
+
+If you have existing stores and authorization models and wish to migrate to use the operator without deploying a new authorization model or store, you can retain the existing ones. Creating new models would require reconciling all existing relationship tuples, which might not be desirable.
+
+To address this, the `AuthorizationModelRequest` resource provides the properties `existingStoreId` and `existingAuthorizationModelId`, allowing you to reuse your current setup.
+
+Example configuration:
+```yaml
+apiVersion: extensions.fga-operator/v1
+kind: AuthorizationModelRequest
+metadata:
+  name: documents
+spec:
+  existingStoreId: 01J1N8HCY7MQP4QP3GVDWTM9ZG
+  instances:
+    - version:
+        major: 1
+        minor: 1
+        patch: 1
+      existingAuthorizationModelId: 01J23CJTA8X4K87X62ECX1Y58Z
+      authorizationModel: |
+        model
+          schema 1.1
+          
+        type user
+          
+        type document
+          relations
+            define reader: [user]
+            define writer: [user]
+            define owner: [user]
+```
+
+In this configuration, the operator will **not** create a store and authorization model in OpenFGA. It will only handle the creation of Custom Resource Definitions (CRDs), such as `AuthorizationModel` and `Store`, and perform the necessary deployment updates.
+
 ## Installation using Helm
 
 To install the Helm chart for fga-operator, follow the steps below:
