@@ -14,8 +14,7 @@ before:
 
 builds:
   - main: ./cmd/main.go
-    flags:
-      - -o=bin/manager
+    binary: manager
     env:
       - CGO_ENABLED=0
     goos:
@@ -40,29 +39,25 @@ builds:
 #     format_overrides:
 #       - goos: windows
 #         format: zip
+release:
+  disable: true
 
 dockers:
   - goos: linux
     goarch: amd64
+    dockerfile: Dockerfile.goreleaser
     image_templates:
       - "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-amd64"
     use: buildx
-    dockerfile: Dockerfile
     build_flag_templates:
       - "--platform=linux/amd64"
-    extra_files:
-      - go.mod
-      - go.sum
-      - cmd/main.go
-      - api/
-      - internal/
 
   - goos: linux
     goarch: arm64
+    dockerfile: Dockerfile.goreleaser
     image_templates:
       - "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}-arm6"
     use: buildx
-    dockerfile: Dockerfile
     build_flag_templates:
       - "--platform=linux/arm64"
 
