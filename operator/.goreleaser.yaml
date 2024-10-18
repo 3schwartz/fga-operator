@@ -50,7 +50,6 @@ dockers:
     dockerfile: Dockerfile
     build_flag_templates:
       - "--platform=linux/amd64"
-    build_context: ./operator  
 
   - goos: linux
     goarch: arm64
@@ -60,7 +59,6 @@ dockers:
     dockerfile: Dockerfile
     build_flag_templates:
       - "--platform=linux/arm64"
-    build_context: ./operator  
 
 docker_manifests:
   - name_template: "{{ .Env.GITHUB_REGISTRY }}/{{ .ProjectName }}:{{ .Env.IMAGE_TAG }}"
