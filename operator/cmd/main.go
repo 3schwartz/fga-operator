@@ -18,7 +18,6 @@ package main
 
 import (
 	"crypto/tls"
-	"fga-operator/internal/configurations"
 	"fga-operator/internal/controller/authorizationmodel"
 	"fga-operator/internal/controller/authorizationmodelrequest"
 	"fga-operator/internal/observability"
@@ -142,12 +141,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	reconciliationInterval := configurations.GetReconciliationInterval(setupLog)
 	if err = (&authorizationmodel.AuthorizationModelReconciler{
-		Client:                 mgr.GetClient(),
-		Scheme:                 mgr.GetScheme(),
-		Recorder:               mgr.GetEventRecorderFor(authorizationmodel.EventRecorderLabel),
-		ReconciliationInterval: &reconciliationInterval,
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor(authorizationmodel.EventRecorderLabel),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AuthorizationModel")
 		os.Exit(1)

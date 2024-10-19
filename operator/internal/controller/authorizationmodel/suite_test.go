@@ -97,14 +97,12 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	reconcileInterval := time.Second * 45
 	eventRecorder = *record.NewFakeRecorder(20)
 	controllerReconciler = &AuthorizationModelReconciler{
-		Client:                 k8sManager.GetClient(),
-		Scheme:                 k8sManager.GetScheme(),
-		Recorder:               &eventRecorder,
-		Clock:                  MockClock{},
-		ReconciliationInterval: &reconcileInterval,
+		Client:   k8sManager.GetClient(),
+		Scheme:   k8sManager.GetScheme(),
+		Recorder: &eventRecorder,
+		Clock:    MockClock{},
 	}
 
 	err = controllerReconciler.SetupWithManager(k8sManager)

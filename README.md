@@ -466,7 +466,6 @@ All command line flags has defaults and hence none of them are mandatory.
 |-------------------------|---------------------------------------------------------------------------------------------------------------|---------|-----------|-----------------------------------------------------------------------|
 | OPENFGA_API_URL         | Url to OpenFGA.                                                                                               | -       | Yes       | "http://127.0.0.1:8089", "http://openfga.demo.svc.cluster.local:8080" |
 | OPENFGA_API_TOKEN       | Preshared key used for authentication to OpenFGA.                                                             | -       | Yes       | "foobar", "some_token"                                                |
-| RECONCILIATION_INTERVAL | The time interval between reconciliation loops, unless an `AuthorizationModelRequest` is created or modified. | "10s"   | No        | "45s", "5m", "3h"                                                     |
 
 
 ## Events
