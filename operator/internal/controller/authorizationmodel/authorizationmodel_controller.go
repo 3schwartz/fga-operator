@@ -20,13 +20,19 @@ import (
 	"context"
 	extensionsv1 "fga-operator/api/v1"
 	"fga-operator/internal/observability"
+	"fmt"
 	"github.com/go-logr/logr"
 	appsV1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/clock"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,7 +47,6 @@ type AuthorizationModelReconciler struct {
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 	Clock
-	ReconciliationInterval *time.Duration
 }
 
 type Clock interface {
@@ -76,8 +81,6 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 	logger := log.FromContext(ctx)
 	logger.Info("Reconciliation triggered for authorization model")
 	reconcileTimestamp := r.Now()
-
-	requeueResult := ctrl.Result{RequeueAfter: *r.ReconciliationInterval}
 
 	authorizationModel := &extensionsv1.AuthorizationModel{}
 	if err := r.Get(ctx, req.NamespacedName, authorizationModel); err != nil {
@@ -122,13 +125,20 @@ func (r *AuthorizationModelReconciler) Reconcile(ctx context.Context, req ctrl.R
 		)
 	}
 
+	failures := make([]string, 0)
 	for _, deployment := range updates {
 		if err := r.updateDeployment(ctx, &deployment, req.Name, &logger); err != nil {
 			r.createAuthorizationModelEvent(authorizationModel, EventReasonFailedUpdatingDeployment, err)
+			failures = append(failures, deployment.Name)
 		}
 	}
 
-	return requeueResult, nil
+	if len(failures) != 0 {
+		failureList := strings.Join(failures, ", ")
+		return ctrl.Result{}, fmt.Errorf("failed to update deployments: %v", failureList)
+	}
+
+	return ctrl.Result{}, nil
 }
 
 func (r *AuthorizationModelReconciler) createAuthorizationModelEvent(
@@ -194,6 +204,48 @@ func (r *AuthorizationModelReconciler) SetupWithManager(mgr ctrl.Manager) error 
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&extensionsv1.AuthorizationModel{}).
+		Watches(
+			&appsV1.Deployment{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+				deployment := a.(*appsV1.Deployment)
+				labelValue, exists := deployment.Labels[extensionsv1.OpenFgaStoreLabel]
+				if !exists {
+					return nil
+				}
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{
+						Namespace: deployment.Namespace,
+						Name:      labelValue}},
+				}
+			}),
+			builder.WithPredicates(
+				predicate.Funcs{
+					CreateFunc: func(e event.CreateEvent) bool {
+						return true
+					},
+					// UpdateFunc will only return true if the specified labels have changed between the old and new Deployment
+					UpdateFunc: func(e event.UpdateEvent) bool {
+						oldDeployment := e.ObjectOld.(*appsV1.Deployment)
+						newDeployment := e.ObjectNew.(*appsV1.Deployment)
+
+						// Get old and new label values
+						oldStoreLabel := oldDeployment.Labels[extensionsv1.OpenFgaStoreLabel]
+						newStoreLabel := newDeployment.Labels[extensionsv1.OpenFgaStoreLabel]
+
+						oldAuthLabel := oldDeployment.Labels[extensionsv1.OpenFgaAuthModelVersionLabel]
+						newAuthLabel := newDeployment.Labels[extensionsv1.OpenFgaAuthModelVersionLabel]
+
+						// Trigger reconciliation if either the OpenFgaStoreLabel or OpenFgaAuthLabel has changed
+						return oldStoreLabel != newStoreLabel || oldAuthLabel != newAuthLabel
+					},
+					DeleteFunc: func(e event.DeleteEvent) bool {
+						return false
+					},
+					GenericFunc: func(e event.GenericEvent) bool {
+						return false
+					},
+				}),
+		).
 		WithEventFilter(deletePredicate).
 		Complete(r)
 }
