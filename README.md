@@ -1,3 +1,6 @@
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B49102%2Fgithub.com%2F3schwartz%2Ffga-operator.svg?type=shield&issueType=license)](https://app.fossa.com/projects/custom%2B49102%2Fgithub.com%2F3schwartz%2Ffga-operator?ref=badge_shield&issueType=license)
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B49102%2Fgithub.com%2F3schwartz%2Ffga-operator.svg?type=shield&issueType=security)](https://app.fossa.com/projects/custom%2B49102%2Fgithub.com%2F3schwartz%2Ffga-operator?ref=badge_shield&issueType=security)
+
 # FGA Operator Documentation
 
 This documentation helps you deploy an OpenFGA authorization model and ensures your deployments stay in sync with the latest authorization model from OpenFGA. The FGA operator automates the synchronization between your deployments and the authorization models.

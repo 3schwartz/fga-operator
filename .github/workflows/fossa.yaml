@@ -1,0 +1,17 @@
+name: Fossa Analyze
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: fossas/fossa-action@dbd64c2dcb15fe4a5efda62a475d071667eb13b8
+        with:
+          api-key: ${{secrets.FOSSA_API_KEY}}
