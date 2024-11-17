@@ -472,6 +472,10 @@ All command line flags has defaults and hence none of them are mandatory.
 | RECONCILIATION_INTERVAL | The time interval between reconciliation loops, unless an `AuthorizationModelRequest` is created or modified. | "10s"   | No        | "45s", "5m", "3h"                                                     |
 
 
+## Limitations
+
+- The store name provided must be unique. When querying existing stores, the operator retrieves the ID of the **first store** in OpenFGA that matches the specified name.
+
 ## Events
 
 This table outlines the events emitted by the controllers during the reconciliation process, along with their type and description.
