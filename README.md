@@ -566,7 +566,7 @@ participant OpenFGA
 
 ### Steps
 
-#### Client Request 
+#### Client Request
 - The client creates an `AuthorizationModelRequest`.
 
 #### `AuthorizationModelRequestReconciler` Request Reconciliation:
