@@ -564,7 +564,7 @@ participant OpenFGA
     deactivate AuthorizationModelReconciler
 ```
 
-### Steps
+### Steps 
 
 #### Client Request
 - The client creates an `AuthorizationModelRequest`.
